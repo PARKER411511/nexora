@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
-import {
-  createChangeRequest,
-  decideChangeProposal,
-  getReview,
-  reviewComment,
-} from "@/lib/db";
 import { validateChangeRequestInput } from "@/lib/validation";
 import { sameOriginError } from "@/lib/origin";
+import { isDemoMode } from "@/lib/mode";
 
 export const runtime = "nodejs";
 
@@ -15,6 +10,12 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
+  if (isDemoMode())
+    return NextResponse.json(
+      { error: "This browser demo keeps review data in browser storage." },
+      { status: 409 },
+    );
+  const { getReview } = await import("@/lib/db");
   const review = getReview(token);
   return review
     ? NextResponse.json({ review })
@@ -32,6 +33,13 @@ export async function POST(
   if (originError)
     return NextResponse.json({ error: originError }, { status: 403 });
   try {
+    if (isDemoMode())
+      return NextResponse.json(
+        { error: "This browser demo saves review responses in this browser." },
+        { status: 409 },
+      );
+    const { createChangeRequest, decideChangeProposal, reviewComment } =
+      await import("@/lib/db");
     const { token } = await params;
     const body = (await request.json()) as Record<string, unknown>;
     const action = body.action;

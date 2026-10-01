@@ -20,6 +20,15 @@ import type {
   ProjectHistory,
   Scope,
 } from "@/lib/types";
+import {
+  demoCreateChangeProposal,
+  demoExportMarkdown,
+  demoGetHistory,
+  demoGetProject,
+  demoShareProject,
+  demoUpdateProject,
+  DemoStorageError,
+} from "@/lib/demo-store";
 
 function EditableList({
   label,
@@ -74,7 +83,13 @@ function EditableList({
   );
 }
 
-export function ProjectEditor({ project: initial }: { project: Project }) {
+export function ProjectEditor({
+  project: initial,
+  demoMode = false,
+}: {
+  project: Project;
+  demoMode?: boolean;
+}) {
   const [project, setProject] = useState(initial);
   const [tab, setTab] = useState<"scope" | "analysis" | "changes">("scope");
   const [error, setError] = useState("");
@@ -100,22 +115,31 @@ export function ProjectEditor({ project: initial }: { project: Project }) {
   async function refreshHistory() {
     setHistoryLoading(true);
     try {
-      const [historyResponse, projectResponse] = await Promise.all([
-        fetch(`/api/projects/${project.id}/history`),
-        fetch(`/api/projects/${project.id}`),
-      ]);
-      const historyData = await historyResponse.json();
-      const projectData = await projectResponse.json();
-      if (!historyResponse.ok) throw new Error(historyData.error);
-      if (!projectResponse.ok) throw new Error(projectData.error);
-      setHistory(historyData.history);
-      if (dirtyRef.current) {
-        setPendingProject(projectData.project);
+      let latestHistory: ProjectHistory;
+      let latestProject: Project;
+      if (demoMode) {
+        latestHistory = demoGetHistory(project.id);
+        latestProject = demoGetProject(project.id) ?? project;
       } else {
-        setProject(projectData.project);
+        const [historyResponse, projectResponse] = await Promise.all([
+          fetch(`/api/projects/${project.id}/history`),
+          fetch(`/api/projects/${project.id}`),
+        ]);
+        const historyData = await historyResponse.json();
+        const projectData = await projectResponse.json();
+        if (!historyResponse.ok) throw new Error(historyData.error);
+        if (!projectResponse.ok) throw new Error(projectData.error);
+        latestHistory = historyData.history;
+        latestProject = projectData.project;
+      }
+      setHistory(latestHistory);
+      if (dirtyRef.current) {
+        setPendingProject(latestProject);
+      } else {
+        setProject(latestProject);
         setShareUrl(
-          projectData.project.reviewToken
-            ? `/review/${projectData.project.reviewToken}`
+          latestProject.reviewToken
+            ? `/review/${latestProject.reviewToken}`
             : "",
         );
         setPendingProject(null);
@@ -168,21 +192,24 @@ export function ProjectEditor({ project: initial }: { project: Project }) {
     setMessage("");
     setSaving(true);
     try {
-      const response = await fetch(`/api/projects/${project.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(project),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-      setProject(data.project);
+      const saved = demoMode
+        ? demoUpdateProject(project.id, project)
+        : await (async () => {
+            const response = await fetch(`/api/projects/${project.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(project),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            return data.project as Project;
+          })();
+      setProject(saved);
       setPendingProject(null);
       setDirtyState(false);
-      setShareUrl(
-        data.project.reviewToken ? `/review/${data.project.reviewToken}` : "",
-      );
+      setShareUrl(saved.reviewToken ? `/review/${saved.reviewToken}` : "");
       setMessage(
-        data.project.reviewToken
+        saved.reviewToken
           ? "Scope saved. The existing review snapshot is still current."
           : "Scope saved locally. Share a fresh snapshot when ready.",
       );
@@ -198,26 +225,40 @@ export function ProjectEditor({ project: initial }: { project: Project }) {
     setMessage("");
     setSharing(true);
     try {
-      const saveResponse = await fetch(`/api/projects/${project.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(project),
-      });
-      const saved = await saveResponse.json();
-      if (!saveResponse.ok) throw new Error(saved.error);
-      setProject(saved.project);
+      const saved = demoMode
+        ? demoUpdateProject(project.id, project)
+        : await (async () => {
+            const saveResponse = await fetch(`/api/projects/${project.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(project),
+            });
+            const data = await saveResponse.json();
+            if (!saveResponse.ok) throw new Error(data.error);
+            return data.project as Project;
+          })();
+      setProject(saved);
       setPendingProject(null);
       setDirtyState(false);
-      const response = await fetch(`/api/projects/${project.id}/share`, {
-        method: "POST",
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-      setProject(data.project);
-      setShareUrl(data.url);
+      const shared = demoMode
+        ? demoShareProject(project.id)
+        : await (async () => {
+            const response = await fetch(`/api/projects/${project.id}/share`, {
+              method: "POST",
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            return data as { project: Project; url: string };
+          })();
+      setProject(shared.project);
+      setShareUrl(shared.url);
       setMessage("Scope saved and snapshot ready to review.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create review link");
+      setError(
+        e instanceof DemoStorageError || e instanceof Error
+          ? e.message
+          : "Could not create review link",
+      );
     } finally {
       setSharing(false);
     }
@@ -233,6 +274,28 @@ export function ProjectEditor({ project: initial }: { project: Project }) {
       setMessage("Review link copied.");
     } catch {
       setMessage("Select the link to copy it manually.");
+    }
+  }
+
+  function exportMarkdown() {
+    try {
+      const blob = new Blob([demoExportMarkdown(project.id)], {
+        type: "text/markdown;charset=utf-8",
+      });
+      const link = document.createElement("a");
+      const objectUrl = URL.createObjectURL(blob);
+      link.href = objectUrl;
+      link.download = `${project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.md`;
+      document.body.appendChild(link);
+      link.click();
+      window.setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+        link.remove();
+      }, 1000);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Could not export scope",
+      );
     }
   }
 
@@ -269,13 +332,24 @@ export function ProjectEditor({ project: initial }: { project: Project }) {
           </p>
         </div>
         <div className="editor-actions">
-          <a
-            className="button-secondary"
-            href={`/api/projects/${project.id}/export`}
-          >
-            <Download size={13} style={{ verticalAlign: "-2px" }} /> Export
-            markdown
-          </a>
+          {demoMode ? (
+            <button
+              className="button-secondary"
+              onClick={exportMarkdown}
+              type="button"
+            >
+              <Download size={13} style={{ verticalAlign: "-2px" }} /> Export
+              markdown
+            </button>
+          ) : (
+            <a
+              className="button-secondary"
+              href={`/api/projects/${project.id}/export`}
+            >
+              <Download size={13} style={{ verticalAlign: "-2px" }} /> Export
+              markdown
+            </a>
+          )}
           {project.reviewToken && (
             <Link
               className="button-secondary"
@@ -288,6 +362,12 @@ export function ProjectEditor({ project: initial }: { project: Project }) {
           )}
         </div>
       </div>
+      {demoMode && (
+        <div className="demo-banner" role="status">
+          <strong>Browser demo</strong>
+          <span>This project and its review link stay in this browser.</span>
+        </div>
+      )}
       {locked && (
         <div className="locked-note" style={{ marginBottom: 20 }}>
           <Check size={14} style={{ verticalAlign: "-2px" }} /> Approved on{" "}
@@ -556,6 +636,7 @@ export function ProjectEditor({ project: initial }: { project: Project }) {
         />
       ) : (
         <ChangeManagementPanel
+          demoMode={demoMode}
           history={history}
           loading={historyLoading}
           onHistory={setHistory}
@@ -712,12 +793,14 @@ function AnalysisPanel({
 }
 
 function ChangeManagementPanel({
+  demoMode,
   history,
   loading,
   onHistory,
   onRefresh,
   project,
 }: {
+  demoMode: boolean;
   history: ProjectHistory | null;
   loading: boolean;
   onHistory: (history: ProjectHistory) => void;
@@ -752,30 +835,38 @@ function ChangeManagementPanel({
     setSaved("");
     setSending(true);
     try {
-      const response = await fetch(`/api/projects/${project.id}/changes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requestId,
-          title,
-          details,
-          affectedDeliverables: affected
-            .split("\n")
-            .map((item) => item.trim())
-            .filter(Boolean),
-          priceAdjustment: Number(price),
-          currency,
-          timelineImpact: timeline,
-          rationale,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-      onHistory(data.history);
+      const input = {
+        requestId,
+        title,
+        details,
+        affectedDeliverables: affected
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean),
+        priceAdjustment: Number(price),
+        currency,
+        timelineImpact: timeline,
+        rationale,
+      };
+      if (demoMode) onHistory(demoCreateChangeProposal(project.id, input));
+      else {
+        const response = await fetch(`/api/projects/${project.id}/changes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+        onHistory(data.history);
+      }
       setRequestId("");
       setSaved("Proposal sent for client decision.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not send proposal");
+      setError(
+        e instanceof DemoStorageError || e instanceof Error
+          ? e.message
+          : "Could not send proposal",
+      );
     } finally {
       setSending(false);
     }

@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { analyzeBrief, makeDefaultScope } from "@/lib/analyzer";
-import { createProject, listProjects } from "@/lib/db";
 import { isValidBriefAnalysis, validateProjectInput } from "@/lib/validation";
 import type { BriefAnalysis } from "@/lib/types";
 import { sameOriginError } from "@/lib/origin";
+import { isDemoMode } from "@/lib/mode";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  if (isDemoMode()) return NextResponse.json({ projects: [], mode: "demo" });
+  const { listProjects } = await import("@/lib/db");
   return NextResponse.json({ projects: listProjects() });
 }
 
@@ -16,6 +18,12 @@ export async function POST(request: Request) {
   if (originError)
     return NextResponse.json({ error: originError }, { status: 403 });
   try {
+    if (isDemoMode())
+      return NextResponse.json(
+        { error: "The browser demo saves projects in this browser." },
+        { status: 409 },
+      );
+    const { createProject } = await import("@/lib/db");
     const body = (await request.json()) as Record<string, unknown>;
     const brief = typeof body.brief === "string" ? body.brief : "";
     const analysisCandidate: unknown = body.analysis ?? analyzeBrief(brief);

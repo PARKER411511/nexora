@@ -1,6 +1,10 @@
-import { listProjects } from "@/lib/db";
 import { WorkspaceHome } from "@/components/WorkspaceHome";
+import { isDemoMode } from "@/lib/mode";
 
 export const dynamic = "force-dynamic";
 
-export default function WorkspacePage() { return <WorkspaceHome projects={listProjects()} />; }
+export default async function WorkspacePage() {
+  if (isDemoMode()) return <WorkspaceHome demoMode projects={[]} />;
+  const { listProjects } = await import("@/lib/db");
+  return <WorkspaceHome projects={listProjects()} />;
+}

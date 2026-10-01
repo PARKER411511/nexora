@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getProject, updateProject } from "@/lib/db";
 import { validateProjectInput } from "@/lib/validation";
 import { sameOriginError } from "@/lib/origin";
+import { isDemoMode } from "@/lib/mode";
 
 export const runtime = "nodejs";
 
@@ -9,6 +9,12 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  if (isDemoMode())
+    return NextResponse.json(
+      { error: "The browser demo reads projects from this browser." },
+      { status: 409 },
+    );
+  const { getProject } = await import("@/lib/db");
   const { id } = await params;
   const project = getProject(id);
   return project
@@ -24,6 +30,12 @@ export async function PATCH(
   if (originError)
     return NextResponse.json({ error: originError }, { status: 403 });
   try {
+    if (isDemoMode())
+      return NextResponse.json(
+        { error: "The browser demo saves projects in this browser." },
+        { status: 409 },
+      );
+    const { getProject, updateProject } = await import("@/lib/db");
     const { id } = await params;
     const input = validateProjectInput(await request.json());
     return NextResponse.json({ project: updateProject(id, input) });

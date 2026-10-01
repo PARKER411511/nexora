@@ -15,6 +15,12 @@ The app creates `.data/nexora.db` on first use using Node 22's built-in SQLite d
 
 Mutating browser requests require an Origin matching `http://localhost:3002` or `http://127.0.0.1:3002`. Set `APP_ORIGIN` in `.env.local` when the app is served from another exact origin. This protects a local optional AI key from cross-site browser posts; direct scripts should use the application through a browser origin.
 
+## Browser demo mode
+
+For a portfolio deployment without accounts or a hosted database, set `NEXORA_MODE=demo` in `.env.local` before starting Next.js. The demo keeps projects, review snapshots, feedback, approvals, change requests, and proposal decisions in that visitor’s browser `localStorage`; a copied review URL only works in the same browser profile and device. It never sends demo briefs to OpenAI, and it does not provide public shared storage or account isolation.
+
+Vercel builds default to demo mode when `NEXORA_MODE` is unset. Set `NEXORA_MODE=local` when running the SQLite workflow in a server environment that has Node 22 and durable filesystem storage. The demo is the right mode for the public portfolio preview; the local mode is the complete single-owner workspace for private use.
+
 ## Optional analysis provider
 
 Nexora always works with its built-in rule-based analyzer, labelled `Built-in analysis / local`. To enable the optional server-only OpenAI structured-output adapter, copy `.env.example` to `.env.local`, set `OPENAI_API_KEY`, and optionally set `OPENAI_MODEL`. The key is only read in the server route and never sent to the browser. If the provider is unavailable or times out, the route falls back to local analysis and tells the user which mode produced the result.
