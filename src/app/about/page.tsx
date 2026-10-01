@@ -40,7 +40,7 @@ export default function AboutPage() {
             developers who need to turn a rough brief into a shared, readable
             scope. It gives the early decisions a calm place to land.
           </p>
-          <Link className="button-primary" href="/workspace/new">
+          <Link className="button-primary" href="/workspace">
             Try the free demo <ArrowUpRight size={13} />
           </Link>
         </section>
@@ -120,7 +120,7 @@ export default function AboutPage() {
             <div className="section-kicker">Make a brief easier to discuss</div>
             <h2>Bring the next conversation into focus.</h2>
           </div>
-          <Link className="button-primary" href="/workspace/new">
+          <Link className="button-primary" href="/workspace">
             Open the free demo <ArrowUpRight size={13} />
           </Link>
         </section>

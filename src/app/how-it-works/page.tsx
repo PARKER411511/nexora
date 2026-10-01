@@ -62,7 +62,7 @@ export default function HowItWorksPage() {
             later changes honest.
           </p>
           <div className="detail-hero-actions">
-            <Link className="button-primary" href="/workspace/new">
+            <Link className="button-primary" href="/workspace">
               Try the free demo <ArrowUpRight size={13} />
             </Link>
             <span className="detail-note">
@@ -159,7 +159,7 @@ export default function HowItWorksPage() {
             <div className="section-kicker">Try it with a real brief</div>
             <h2>Start with the words you already have.</h2>
           </div>
-          <Link className="button-primary" href="/workspace/new">
+          <Link className="button-primary" href="/workspace">
             Open the free demo <ArrowUpRight size={13} />
           </Link>
         </section>

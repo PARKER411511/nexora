@@ -7,8 +7,12 @@ import {
   demoCreateChangeRequest,
   demoCreateProject,
   demoDecideChangeProposal,
+  demoGetProject,
   demoGetReview,
   demoListProjects,
+  demoInitializeWorkspace,
+  demoLoadSampleProjects,
+  demoResetSampleProjects,
   demoReviewComment,
   demoShareProject,
   demoUpdateProject,
@@ -150,4 +154,105 @@ test("demo rejects duplicate and cross-referenced stored records", () => {
   storage.setItem("nexora-demo-state-v1", JSON.stringify(invalid));
   assert.throws(() => demoListProjects(), DemoStorageError);
   assert.equal(secondShared.project.id, second.id);
+});
+
+test("demo seeds three fictional projects once and keeps existing projects", () => {
+  const first = demoInitializeWorkspace();
+  assert.equal(first.projects.length, 3);
+  assert.equal(first.hasSamples, true);
+  assert.equal(first.initialized, true);
+  assert.equal(
+    first.projects.filter((project) => project.status === "draft").length,
+    1,
+  );
+  assert.equal(
+    first.projects.filter((project) => project.status === "approved").length,
+    2,
+  );
+  assert.ok(first.projects.every((project) => project.client.includes("Fictional")));
+  assert.ok(
+    first.projects
+      .filter((project) => project.status === "approved")
+      .every((project) => (project.reviewToken?.length ?? 0) >= 32),
+  );
+  const pending = first.projects.find((project) => project.title.includes("pending"));
+  assert.ok(pending?.reviewToken);
+  const pendingHistory = demoGetReview(pending!.reviewToken!);
+  assert.equal(pendingHistory?.changeRequests[0]?.status, "proposed");
+  assert.equal(pendingHistory?.changeRequests[0]?.proposals[0]?.status, "sent");
+
+  const second = demoInitializeWorkspace();
+  assert.equal(second.initialized, false);
+  assert.deepEqual(
+    second.projects.map((project) => project.id).sort(),
+    first.projects.map((project) => project.id).sort(),
+  );
+
+  storage.removeItem("nexora-demo-state-v1");
+  const recreated = demoCreateProject({
+    title: "Existing user project",
+    client: "Existing client",
+    brief,
+    analysis: demoAnalyze(brief),
+    scope: makeDefaultScope(demoAnalyze(brief)),
+  });
+  const merged = demoLoadSampleProjects();
+  assert.equal(merged.projects.length, 4);
+  assert.ok(merged.projects.some((project) => project.id === recreated.id));
+});
+
+test("demo initialization preserves legacy state until samples are explicitly loaded", () => {
+  const legacy = createProject();
+  const before = storage.getItem("nexora-demo-state-v1");
+  const initialized = demoInitializeWorkspace();
+  assert.equal(initialized.initialized, false);
+  assert.equal(initialized.hasSamples, false);
+  assert.deepEqual(initialized.projects.map((project) => project.id), [legacy.id]);
+  assert.equal(storage.getItem("nexora-demo-state-v1"), before);
+
+  const loaded = demoLoadSampleProjects();
+  assert.equal(loaded.projects.length, 4);
+  const repeated = demoLoadSampleProjects();
+  assert.equal(repeated.projects.length, 4);
+  assert.deepEqual(
+    repeated.projects.map((project) => project.id).sort(),
+    loaded.projects.map((project) => project.id).sort(),
+  );
+});
+
+test("demo reset rotates sample links, recovers corrupt state, and preserves other storage", () => {
+  const before = demoInitializeWorkspace();
+  const oldReviewToken = before.projects.find((project) => project.status === "approved")!.reviewToken!;
+  storage.setItem("unrelated-site-setting", "keep me");
+  const user = createProject();
+  const after = demoResetSampleProjects();
+  assert.equal(after.projects.length, 3);
+  assert.equal(storage.getItem("unrelated-site-setting"), "keep me");
+  assert.equal(demoGetReview(oldReviewToken), null);
+  assert.equal(demoGetProject(user.id), null);
+  assert.notEqual(
+    after.projects.map((project) => project.id).sort().join(","),
+    before.projects.map((project) => project.id).sort().join(","),
+  );
+
+  storage.setItem("nexora-demo-state-v1", "{broken");
+  const recovered = demoResetSampleProjects();
+  assert.equal(recovered.projects.length, 3);
+  assert.equal(demoListProjects().length, 3);
+});
+
+test("demo failed reset save leaves the existing state untouched", () => {
+  const before = demoInitializeWorkspace();
+  const raw = storage.getItem("nexora-demo-state-v1");
+  const originalSetItem = storage.setItem.bind(storage);
+  storage.setItem = () => {
+    throw new Error("quota");
+  };
+  assert.throws(() => demoResetSampleProjects(), DemoStorageError);
+  storage.setItem = originalSetItem;
+  assert.equal(storage.getItem("nexora-demo-state-v1"), raw);
+  assert.deepEqual(
+    demoListProjects().map((project) => project.id).sort(),
+    before.projects.map((project) => project.id).sort(),
+  );
 });

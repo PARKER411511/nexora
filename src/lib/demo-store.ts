@@ -21,7 +21,7 @@ import type {
 
 const STORAGE_KEY = "nexora-demo-state-v1";
 
-type DemoSnapshot = {
+export type DemoSnapshot = {
   token: string;
   projectId: string;
   project: Project;
@@ -30,11 +30,18 @@ type DemoSnapshot = {
   comments: ReviewComment[];
 };
 
-type DemoState = {
+export type DemoStateMetadata = {
+  version: 1;
+  sampleProjectIds: string[];
+  seededAt: string;
+};
+
+export type DemoState = {
   version: 1;
   projects: Project[];
   snapshots: DemoSnapshot[];
   changeRequests: ChangeRequest[];
+  metadata?: DemoStateMetadata;
 };
 
 export class DemoStorageError extends Error {}
@@ -185,6 +192,22 @@ function isStoredProposal(
   );
 }
 
+function isStoredMetadata(
+  value: unknown,
+  projectIds: Set<string>,
+): value is DemoStateMetadata {
+  if (!value || typeof value !== "object") return false;
+  const metadata = value as DemoStateMetadata;
+  return (
+    metadata.version === 1 &&
+    typeof metadata.seededAt === "string" &&
+    Array.isArray(metadata.sampleProjectIds) &&
+    metadata.sampleProjectIds.length > 0 &&
+    new Set(metadata.sampleProjectIds).size === metadata.sampleProjectIds.length &&
+    metadata.sampleProjectIds.every((id) => projectIds.has(id))
+  );
+}
+
 function readState(): DemoState {
   if (!storageAvailable())
     throw new DemoStorageError(
@@ -235,7 +258,9 @@ function readState(): DemoState {
       ) ||
       !parsed.changeRequests.every((request) =>
         isStoredChangeRequest(request, projectIds, tokens),
-      )
+      ) ||
+      (parsed.metadata !== undefined &&
+        !isStoredMetadata(parsed.metadata, projectIds))
     )
       throw new Error("invalid shape");
     for (const project of projects) {
@@ -745,4 +770,195 @@ export function demoExportMarkdown(projectId: string) {
     `\n## Response history\n${responseLines}`,
     `\n## Change requests and proposals\n${changeLines}`,
   ].join("\n");
+}
+
+export type DemoWorkspaceResult = {
+  projects: Project[];
+  hasSamples: boolean;
+  sampleProjectIds: string[];
+  initialized: boolean;
+};
+
+function sampleProject(
+  title: string,
+  client: string,
+  brief: string,
+): Project {
+  const analysis = analyzeBrief(brief);
+  const timestamp = now();
+  return {
+    ...validateProjectInput({
+      title,
+      client,
+      brief,
+      analysis,
+      scope: makeDefaultScope(analysis),
+    }),
+    id: randomId(),
+    status: "draft",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+function approvedSample(
+  project: Project,
+  approvalName: string,
+  approvalComment: string,
+): { project: Project; snapshot: DemoSnapshot } {
+  const token = randomToken();
+  const timestamp = now();
+  const approved: Project = {
+    ...project,
+    reviewToken: token,
+    status: "approved",
+    approval: {
+      name: approvalName,
+      comment: approvalComment,
+      approvedAt: timestamp,
+    },
+    updatedAt: timestamp,
+  };
+  return {
+    project: approved,
+    snapshot: {
+      token,
+      projectId: approved.id,
+      project: clone(approved),
+      createdAt: timestamp,
+      status: "approved",
+      comments: [
+        {
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          name: approvalName,
+          comment: approvalComment,
+          action: "approval",
+          createdAt: timestamp,
+        },
+      ],
+    },
+  };
+}
+
+function buildSampleState(): DemoState {
+  const draft = sampleProject(
+    "Harbor & Hearth — draft concept",
+    "Fictional café concept",
+    "Fictional demo brief: a neighborhood café needs a warm responsive site that explains the menu, shares the story, and helps new visitors find opening hours and reserve a table.",
+  );
+  const approvedSeed = sampleProject(
+    "Northline Studio — approved scope",
+    "Fictional coaching studio",
+    "Fictional demo brief: a strength studio needs a confident website that explains its coaching approach, shows class formats, and helps new members book an intro session before autumn intake.",
+  );
+  const pendingSeed = sampleProject(
+    "Field Notes — pending change",
+    "Fictional journal publisher",
+    "Fictional demo brief: an independent journal needs a considered editorial website with issue highlights, an archive, contributor context, and a simple path to subscribe.",
+  );
+  const approved = approvedSample(
+    approvedSeed,
+    "Alex Morgan (fictional)",
+    "The scope is clear for the first release. Approved for this demo.",
+  );
+  const pending = approvedSample(
+    pendingSeed,
+    "Sam Rivera (fictional)",
+    "The editorial launch scope looks right. Approved for this demo.",
+  );
+  const requestId = randomId();
+  const requestTime = now();
+  const proposal: ChangeProposal = {
+    id: randomId(),
+    requestId,
+    version: 1,
+    title: "Add a subscriber welcome flow",
+    details:
+      "Add a short welcome sequence and a connected signup confirmation after the archive launch.",
+    affectedDeliverables: ["Subscription pathway", "Launch handoff"],
+    priceAdjustment: 480,
+    currency: "USD",
+    timelineImpact: "Adds three working days after copy approval.",
+    rationale:
+      "The welcome flow introduces content and integration work outside the approved baseline.",
+    status: "sent",
+    createdAt: requestTime,
+  };
+  const request: ChangeRequest = {
+    id: requestId,
+    projectId: pending.project.id,
+    token: pending.snapshot.token,
+    requesterName: "Sam Rivera (fictional)",
+    title: "Add a subscriber welcome flow",
+    details:
+      "Could we add a welcome email and confirmation step for new journal subscribers?",
+    status: "proposed",
+    createdAt: requestTime,
+    updatedAt: requestTime,
+    proposals: [proposal],
+  };
+  const projects = [draft, approved.project, pending.project];
+  return {
+    version: 1,
+    projects,
+    snapshots: [approved.snapshot, pending.snapshot],
+    changeRequests: [request],
+    metadata: {
+      version: 1,
+      sampleProjectIds: projects.map((project) => project.id),
+      seededAt: now(),
+    },
+  };
+}
+
+function workspaceResult(
+  state: DemoState,
+  initialized: boolean,
+): DemoWorkspaceResult {
+  return {
+    projects: clone(state.projects).sort((a, b) =>
+      b.updatedAt.localeCompare(a.updatedAt),
+    ),
+    hasSamples: Boolean(state.metadata?.sampleProjectIds.length),
+    sampleProjectIds: [...(state.metadata?.sampleProjectIds ?? [])],
+    initialized,
+  };
+}
+
+export function demoInitializeWorkspace(): DemoWorkspaceResult {
+  if (!storageAvailable())
+    throw new DemoStorageError(
+      "This browser does not allow local demo storage. Try a normal browser window.",
+    );
+  if (window.localStorage.getItem(STORAGE_KEY) !== null)
+    return workspaceResult(readState(), false);
+  const state = buildSampleState();
+  writeState(state);
+  return workspaceResult(state, true);
+}
+
+export function demoLoadSampleProjects(): DemoWorkspaceResult {
+  const state = readState();
+  if (state.metadata?.sampleProjectIds.length)
+    return workspaceResult(state, false);
+  const samples = buildSampleState();
+  const merged: DemoState = {
+    ...state,
+    projects: [...state.projects, ...samples.projects],
+    snapshots: [...state.snapshots, ...samples.snapshots],
+    changeRequests: [...state.changeRequests, ...samples.changeRequests],
+    metadata: samples.metadata,
+  };
+  writeState(merged);
+  return workspaceResult(merged, false);
+}
+
+export function demoResetSampleProjects(): DemoWorkspaceResult {
+  if (!storageAvailable())
+    throw new DemoStorageError(
+      "This browser does not allow local demo storage. Try a normal browser window.",
+    );
+  const state = buildSampleState();
+  writeState(state);
+  return workspaceResult(state, false);
 }

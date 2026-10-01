@@ -100,7 +100,7 @@ export default function Home() {
               client can understand, review, and approve.
             </p>
             <div className="hero-actions">
-              <Link className="button-primary" href="/workspace/new">
+              <Link className="button-primary" href="/workspace">
                 Try the free demo <ArrowUpRight size={13} />
               </Link>
               <Link className="play-link" href="/how-it-works">
@@ -293,7 +293,7 @@ export default function Home() {
               </p>
             </div>
             <Link className="text-link" href="/pricing">
-              View pricing detail <ArrowUpRight size={13} />
+              View pricing details <ArrowUpRight size={13} />
             </Link>
           </div>
           <PricingCards compact />
@@ -330,7 +330,7 @@ export default function Home() {
               <br />
               into something clear.
             </h2>
-            <Link className="button-primary" href="/workspace/new">
+            <Link className="button-primary" href="/workspace">
               Try the free demo <ArrowUpRight size={13} />
             </Link>
           </div>

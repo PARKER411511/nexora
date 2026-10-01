@@ -64,7 +64,7 @@ export default function PricingPage() {
             <div className="section-kicker">Free to explore</div>
             <h2>See the whole flow before deciding what it could become.</h2>
           </div>
-          <Link className="button-primary" href="/workspace/new">
+          <Link className="button-primary" href="/workspace">
             Try the free demo <ArrowUpRight size={13} />
           </Link>
         </section>

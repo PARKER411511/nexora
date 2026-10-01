@@ -8,8 +8,15 @@ import { ProjectEditor } from "./ProjectEditor";
 
 export function DemoProjectPage({ id }: { id: string }) {
   const [project, setProject] = useState<Project | null | undefined>(undefined);
+  const [initialTab, setInitialTab] = useState<
+    "scope" | "analysis" | "changes"
+  >("scope");
   const [error, setError] = useState("");
   useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    if (requestedTab === "analysis" || requestedTab === "changes") {
+      setInitialTab(requestedTab);
+    }
     try {
       setProject(demoGetProject(id));
     } catch (reason) {
@@ -57,5 +64,5 @@ export function DemoProjectPage({ id }: { id: string }) {
         </div>
       </div>
     );
-  return <ProjectEditor demoMode project={project} />;
+  return <ProjectEditor demoMode initialTab={initialTab} project={project} />;
 }

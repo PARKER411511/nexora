@@ -86,12 +86,16 @@ function EditableList({
 export function ProjectEditor({
   project: initial,
   demoMode = false,
+  initialTab,
 }: {
   project: Project;
   demoMode?: boolean;
+  initialTab?: "scope" | "analysis" | "changes";
 }) {
   const [project, setProject] = useState(initial);
-  const [tab, setTab] = useState<"scope" | "analysis" | "changes">("scope");
+  const [tab, setTab] = useState<"scope" | "analysis" | "changes">(
+    initialTab ?? "scope",
+  );
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -106,6 +110,10 @@ export function ProjectEditor({
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const locked = project.status === "approved";
   const editingDisabled = locked || saving || sharing || historyLoading;
+
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
 
   function setDirtyState(value: boolean) {
     dirtyRef.current = value;
