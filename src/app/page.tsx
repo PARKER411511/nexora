@@ -1,14 +1,15 @@
 import Link from "next/link";
 import {
   ArrowUpRight,
-  Check,
   Code2,
   FileText,
   Globe2,
   Layers3,
   MessageSquare,
+  Minus,
   Milestone,
   PenTool,
+  Plus,
   Play,
 } from "lucide-react";
 import { MarketingFooter } from "@/components/MarketingFooter";
@@ -56,11 +57,33 @@ const useCases = [
   },
 ];
 
+const faqs = [
+  {
+    question: "Is Nexora an AI product?",
+    answer:
+      "The built-in analyzer is a transparent local tool that works immediately. An optional AI mode can help when configured.",
+  },
+  {
+    question: "Can a client change an approved scope?",
+    answer:
+      "Approval locks the snapshot. A later note becomes a separate change request with an explicit proposal and decision.",
+  },
+  {
+    question: "Where does the free demo save project data?",
+    answer:
+      "The browser demo keeps projects in this browser. Review links work on the same browser profile and device.",
+  },
+  {
+    question: "Are the paid prices real?",
+    answer:
+      "No. Solo and Studio prices are illustrative portfolio examples. The whole current demo is free and has no billing flow.",
+  },
+];
 export default function Home() {
   return (
     <>
+      <MarketingHeader />
       <section className="landing-hero">
-        <MarketingHeader />
         <div aria-hidden="true" className="hero-art-layer">
           <div className="hero-orbit" />
         </div>
@@ -283,34 +306,18 @@ export default function Home() {
               <h2 className="section-title">A few useful answers.</h2>
             </div>
             <div className="faq-list">
-              <details className="faq-item">
-                <summary>Is Nexora an AI product?</summary>
-                <p>
-                  The built-in analyzer is a transparent local tool that works
-                  immediately. An optional AI mode can help when configured.
-                </p>
-              </details>
-              <details className="faq-item">
-                <summary>Can a client change an approved scope?</summary>
-                <p>
-                  Approval locks the snapshot. A later note becomes a separate
-                  change request with an explicit proposal and decision.
-                </p>
-              </details>
-              <details className="faq-item">
-                <summary>Where does the free demo save project data?</summary>
-                <p>
-                  The browser demo keeps projects in this browser. Review links
-                  work on the same browser profile and device.
-                </p>
-              </details>
-              <details className="faq-item">
-                <summary>Are the paid prices real?</summary>
-                <p>
-                  No. Solo and Studio prices are illustrative portfolio examples.
-                  The whole current demo is free and has no billing flow.
-                </p>
-              </details>
+              {faqs.map(({ answer, question }) => (
+                <details className="faq-item" key={question}>
+                  <summary>
+                    <span>{question}</span>
+                    <span aria-hidden="true" className="faq-icon">
+                      <Plus className="faq-icon-open" size={16} />
+                      <Minus className="faq-icon-close" size={16} />
+                    </span>
+                  </summary>
+                  <p>{answer}</p>
+                </details>
+              ))}
             </div>
           </div>
         </section>

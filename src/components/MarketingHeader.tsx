@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
@@ -29,49 +29,51 @@ export function MarketingHeader() {
   }, []);
 
   return (
-    <header className="site-header marketing-header">
-      <Link className="brand" href="/" onClick={closeMenu}>
-        <span aria-hidden="true" className="brand-mark">
-          ✳
-        </span>
-        Nexora
-      </Link>
-      <nav aria-label="Main navigation" className="nav marketing-nav">
-        {links.map((link) => (
-          <Link href={link.href} key={link.href} onClick={closeMenu}>
-            {link.label}
-          </Link>
-        ))}
-        <Link className="nav-cta" href="/workspace" onClick={closeMenu}>
-          Open workspace
+    <div className="marketing-header-shell">
+      <header className="site-header marketing-header">
+        <Link className="brand" href="/" onClick={closeMenu}>
+          <span aria-hidden="true" className="brand-mark">
+            ✳
+          </span>
+          Nexora
         </Link>
-      </nav>
-      <button
-        aria-controls="mobile-marketing-nav"
-        aria-expanded={open}
-        aria-label={open ? "Close menu" : "Open menu"}
-        className="mobile-menu-toggle"
-        onClick={() => setOpen((value) => !value)}
-        type="button"
-      >
-        {open ? <X size={19} /> : <Menu size={19} />}
-      </button>
-      <nav
-        aria-hidden={!open}
-        aria-label="Mobile navigation"
-        className="mobile-nav-panel"
-        hidden={!open}
-        id="mobile-marketing-nav"
-      >
-        {links.map((link) => (
-          <Link href={link.href} key={link.href} onClick={closeMenu}>
-            {link.label}
+        <nav aria-label="Main navigation" className="nav marketing-nav">
+          {links.map((link) => (
+            <Link href={link.href} key={link.href} onClick={closeMenu}>
+              {link.label}
+            </Link>
+          ))}
+          <Link className="nav-cta" href="/workspace" onClick={closeMenu}>
+            Open workspace
           </Link>
-        ))}
-        <Link className="button-primary" href="/workspace" onClick={closeMenu}>
-          Open workspace
-        </Link>
-      </nav>
-    </header>
+        </nav>
+        <button
+          aria-controls="mobile-marketing-nav"
+          aria-expanded={open}
+          aria-label={open ? "Close menu" : "Open menu"}
+          className="mobile-menu-toggle"
+          onClick={() => setOpen((value) => !value)}
+          type="button"
+        >
+          {open ? <X size={19} /> : <Menu size={19} />}
+        </button>
+        <nav
+          aria-hidden={!open}
+          aria-label="Mobile navigation"
+          className="mobile-nav-panel"
+          hidden={!open}
+          id="mobile-marketing-nav"
+        >
+          {links.map((link) => (
+            <Link href={link.href} key={link.href} onClick={closeMenu}>
+              {link.label}
+            </Link>
+          ))}
+          <Link className="button-primary" href="/workspace" onClick={closeMenu}>
+            Open workspace
+          </Link>
+        </nav>
+      </header>
+    </div>
   );
 }

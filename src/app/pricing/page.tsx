@@ -17,7 +17,7 @@ export default function PricingPage() {
       <main>
         <section className="detail-hero pricing-hero" id="demo">
           <div className="section-kicker">Illustrative pricing</div>
-          <h1>A free working demo, with example ways to frame the product.</h1>
+          <h1>Example plans. A free demo.</h1>
           <p>
             Nexora is free to explore in this portfolio demo. The Solo and
             Studio prices below are visual examples, not a live subscription
