@@ -31,9 +31,11 @@ const sampleLabels = [
 export function WorkspaceHome({
   projects: initialProjects,
   demoMode = false,
+  view = "overview",
 }: {
   projects: Project[];
   demoMode?: boolean;
+  view?: "overview" | "projects";
 }) {
   const [projects, setProjects] = useState(initialProjects);
   const [loadError, setLoadError] = useState("");
@@ -46,6 +48,7 @@ export function WorkspaceHome({
   const [actionMessage, setActionMessage] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const isProjectsView = view === "projects";
 
   useEffect(() => {
     if (!demoMode) return;
@@ -56,7 +59,7 @@ export function WorkspaceHome({
       setSampleProjectIds(result.sampleProjectIds);
       const seen = window.localStorage.getItem(WALKTHROUGH_KEY) === "1";
       setWalkthroughSeen(seen);
-      if (!seen) setWalkthroughOpen(true);
+      if (!seen && !isProjectsView) setWalkthroughOpen(true);
     } catch (reason) {
       setLoadError(
         reason instanceof DemoStorageError
@@ -64,7 +67,7 @@ export function WorkspaceHome({
           : "Demo data could not be loaded.",
       );
     }
-  }, [demoMode]);
+  }, [demoMode, isProjectsView]);
 
   function dismissWalkthrough() {
     setWalkthroughOpen(false);
@@ -140,10 +143,14 @@ export function WorkspaceHome({
     <div className="workspace-main">
       <div className="workspace-heading">
         <div>
-          <div className="section-kicker">Workspace / overview</div>
-          <h1>Your projects</h1>
+          <div className="section-kicker">
+            Workspace / {isProjectsView ? "projects" : "overview"}
+          </div>
+          <h1>{isProjectsView ? "Project library" : "Your projects"}</h1>
           <p>
-            {demoMode
+            {isProjectsView
+              ? "Browse every brief, scope, and review state saved in this workspace."
+              : demoMode
               ? "Demo data stays in this browser so you can try the full workflow."
               : "Make the next decision easier to see."}
           </p>

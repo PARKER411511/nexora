@@ -7,6 +7,11 @@ import { isDemoModeClient } from "@/lib/mode";
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isOverview = pathname === "/workspace";
+  const isProjects =
+    pathname === "/workspace/projects" ||
+    pathname.startsWith("/workspace/projects/");
+  const isNewBrief = pathname === "/workspace/new";
   return (
     <div className="workspace-shell">
       <header className="workspace-topbar">
@@ -26,18 +31,24 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         <aside className="sidebar">
           <p className="sidebar-label">Workspace</p>
           <Link
-            className={`side-link ${pathname === "/workspace" ? "active" : ""}`}
+            aria-current={isOverview ? "page" : undefined}
+            className={`side-link ${isOverview ? "active" : ""}`}
             href="/workspace"
           >
             <LayoutDashboard size={15} /> Overview
           </Link>
           <Link
-            className={`side-link ${pathname.includes("/projects") ? "active" : ""}`}
-            href="/workspace"
+            aria-current={isProjects ? "page" : undefined}
+            className={`side-link ${isProjects ? "active" : ""}`}
+            href="/workspace/projects"
           >
             <FolderKanban size={15} /> Projects
           </Link>
-          <Link className="side-link" href="/workspace/new">
+          <Link
+            aria-current={isNewBrief ? "page" : undefined}
+            className={`side-link ${isNewBrief ? "active" : ""}`}
+            href="/workspace/new"
+          >
             <Sparkles size={15} /> New brief
           </Link>
         </aside>
