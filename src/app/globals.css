@@ -393,6 +393,11 @@ button:disabled {
   min-height: 58px;
   padding: 14px 0;
 }
+.faq-item summary:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--red);
+  outline-offset: 3px;
+}
 .faq-item summary::-webkit-details-marker {
   display: none;
 }
@@ -1470,7 +1475,7 @@ button:disabled {
 }
 .detail-hero h1 {
   font-size: clamp(46px, 7vw, 88px);
-  letter-spacing: -0.07em;
+  letter-spacing: -0.04em;
   line-height: 0.98;
   margin: 20px 0 26px;
   max-width: 930px;
@@ -1506,7 +1511,7 @@ button:disabled {
 .detail-section-heading h2,
 .detail-cta h2 {
   font-size: clamp(32px, 4vw, 56px);
-  letter-spacing: -0.06em;
+  letter-spacing: -0.04em;
   line-height: 1;
   margin: 18px 0 0;
 }
@@ -1781,7 +1786,7 @@ button:disabled {
 .about-story-copy h2,
 .privacy-section h2 {
   font-size: clamp(32px, 4vw, 54px);
-  letter-spacing: -0.06em;
+  letter-spacing: -0.04em;
   line-height: 1;
   margin: 18px 0 27px;
 }
@@ -1940,7 +1945,7 @@ button:disabled {
     padding-top: 85px;
   }
   .detail-hero h1 {
-    font-size: 48px;
+    font-size: clamp(38px, 12vw, 48px);
   }
   .detail-hero > p {
     font-size: 15px;
