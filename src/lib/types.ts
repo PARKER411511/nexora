@@ -1,4 +1,8 @@
-export type ProjectStatus = "draft" | "shared" | "changes_requested" | "approved";
+export type ProjectStatus =
+  | "draft"
+  | "shared"
+  | "changes_requested"
+  | "approved";
 
 export type BriefAnalysis = {
   mode: "local" | "openai";
@@ -43,7 +47,55 @@ export type ReviewComment = {
   createdAt: string;
 };
 
+export type SnapshotStatus = "current" | "superseded" | "approved" | "revoked";
+
+export type ProjectResponse = ReviewComment & {
+  token: string;
+  snapshotCreatedAt: string;
+  snapshotStatus: SnapshotStatus;
+};
+
+export type ChangeRequestStatus = "open" | "proposed" | "accepted" | "declined";
+export type ProposalStatus = "sent" | "accepted" | "declined";
+
+export type ChangeProposal = {
+  id: string;
+  requestId: string;
+  version: number;
+  title: string;
+  details: string;
+  affectedDeliverables: string[];
+  priceAdjustment: number;
+  currency: string;
+  timelineImpact: string;
+  rationale: string;
+  status: ProposalStatus;
+  createdAt: string;
+  decidedBy?: string;
+  decisionComment?: string;
+  decidedAt?: string;
+};
+
+export type ChangeRequest = {
+  id: string;
+  projectId: string;
+  token: string;
+  requesterName: string;
+  title: string;
+  details: string;
+  status: ChangeRequestStatus;
+  createdAt: string;
+  updatedAt: string;
+  proposals: ChangeProposal[];
+};
+
+export type ProjectHistory = {
+  responses: ProjectResponse[];
+  changeRequests: ChangeRequest[];
+};
+
 export type ReviewSnapshot = Project & {
   comments: ReviewComment[];
   snapshotCreatedAt: string;
+  changeRequests: ChangeRequest[];
 };

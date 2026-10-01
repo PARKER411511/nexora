@@ -1,16 +1,272 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, LoaderCircle, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  LoaderCircle,
+  Sparkles,
+} from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BriefAnalysis } from "@/lib/types";
 
-const example = "A warm, editorial website for a neighborhood strength studio. It should explain the coaching approach, show class formats, help new members book an intro session, and feel confident without looking like a generic fitness template. The studio has a new identity, a few photography selects, and wants to launch before the autumn intake.";
+const example =
+  "A warm, editorial website for a neighborhood strength studio. It should explain the coaching approach, show class formats, help new members book an intro session, and feel confident without looking like a generic fitness template. The studio has a new identity, a few photography selects, and wants to launch before the autumn intake.";
 
 export function NewProjectForm() {
-  const router = useRouter(); const [title, setTitle] = useState(""); const [client, setClient] = useState(""); const [brief, setBrief] = useState(""); const [analysis, setAnalysis] = useState<BriefAnalysis | null>(null); const [preferOpenAI, setPreferOpenAI] = useState(false); const [notice, setNotice] = useState(""); const [error, setError] = useState(""); const [loading, setLoading] = useState(false); const [saving, setSaving] = useState(false);
-  async function analyze() { setError(""); setNotice(""); setLoading(true); try { const response = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief, preferOpenAI }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); setAnalysis(data.analysis); if (data.notice) setNotice(data.notice); } catch (e) { setError(e instanceof Error ? e.message : "Could not analyze brief"); } finally { setLoading(false); } }
-  async function create() { setError(""); setSaving(true); try { const response = await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, client, brief, analysis }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); router.push(`/workspace/projects/${data.project.id}`); } catch (e) { setError(e instanceof Error ? e.message : "Could not create project"); setSaving(false); } }
-  return <div className="editor-wrap"><Link className="back-link" href="/workspace"><ArrowLeft size={13} style={{ verticalAlign: "-2px" }} /> Back to workspace</Link><div className="editor-header"><div><div className="section-kicker">New project / 01</div><h1>Start with the brief.</h1><p>Keep the context intact. Nexora will help you find the shape inside it.</p></div></div><div className="editor-tabs"><span className="editor-tab active">Capture</span><span className="editor-tab">Analyze</span><span className="editor-tab">Shape scope</span></div><div className="editor-columns"><section className="card"><h2>Project context</h2><div className="field"><label htmlFor="project-title">Project name</label><input id="project-title" onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Northline Studio website" value={title} /></div><div className="field"><label htmlFor="project-client">Client or team</label><input id="project-client" onChange={(e) => setClient(e.target.value)} placeholder="e.g. Amina / Northline Studio" value={client} /></div><div className="field"><label htmlFor="project-brief">The brief</label><textarea id="project-brief" onChange={(e) => { setBrief(e.target.value); setAnalysis(null); }} placeholder="Paste the client’s words, notes, and context here…" value={brief} /></div><button className="button-quiet" onClick={() => { setBrief(example); setAnalysis(null); }} type="button">Use the sample gym brief</button><div style={{ marginTop: 18 }}><label style={{ color: "#c7c3c3", display: "flex", fontSize: 11, gap: 8 }}><input checked={preferOpenAI} onChange={(e) => setPreferOpenAI(e.target.checked)} type="checkbox" /> Use optional AI analysis if connected</label><small style={{ color: "#777", display: "block", fontSize: 10, margin: "7px 0 0 24px" }}>Uses Built-in analysis / local if AI isn&apos;t connected.</small></div></section><section className="card"><div className="analysis-banner"><Sparkles size={17} color="#ff645a" /><div><strong>{analysis ? "Brief shape found" : "Ready when you are"}</strong><span>{analysis ? `${analysis.mode === "openai" ? "Optional server analysis" : "Built-in analysis / local"}` : "Analyze to surface useful questions and first scope inputs."}</span></div></div>{analysis ? <><h2>First read</h2><p style={{ color: "#c7c3c3", fontSize: 13 }}>{analysis.summary}</p><h3>Likely audience</h3><p style={{ color: "#8b8989", fontSize: 12 }}>{analysis.audience}</p><h3>Likely pages</h3><div className="tag-list">{analysis.pages.map((page) => <span className="tag" key={page}>{page}</span>)}</div><h3>Questions to resolve</h3>{analysis.questions.map((question) => <div className="line-item" key={question}><span>{question}</span></div>)}</> : <div style={{ color: "#777", fontSize: 12, lineHeight: 1.8 }}><p>We&apos;ll look for:</p><ul><li>what the site needs to help people do</li><li>which pages and content are implied</li><li>risks and questions worth asking early</li></ul></div>}</section></div>{error && <p className="form-error" style={{ marginTop: 18 }}>{error}</p>}{notice && <p className="form-success" style={{ marginTop: 18 }}>{notice}</p>}<div className="editor-bottom"><span style={{ color: "#777", fontSize: 11 }}>{analysis ? "Your first scope will be ready after creation." : "A detailed brief makes the first read more useful."}</span><div className="editor-bottom-right">{analysis ? <button className="button-primary" disabled={saving} onClick={create}>{saving ? <LoaderCircle className="spin" size={14} /> : <>Create project <ArrowRight size={14} style={{ verticalAlign: "-2px" }} /></>}</button> : <button className="button-primary" disabled={loading} onClick={analyze}>{loading ? <LoaderCircle className="spin" size={14} /> : <>Analyze brief <ArrowRight size={14} style={{ verticalAlign: "-2px" }} /></>}</button>}</div></div></div>;
+  const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [client, setClient] = useState("");
+  const [brief, setBrief] = useState("");
+  const [analysis, setAnalysis] = useState<BriefAnalysis | null>(null);
+  const [preferOpenAI, setPreferOpenAI] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  async function analyze() {
+    setError("");
+    setNotice("");
+    setLoading(true);
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brief, preferOpenAI }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setAnalysis(data.analysis);
+      if (data.notice) setNotice(data.notice);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not analyze brief");
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function create() {
+    setError("");
+    setSaving(true);
+    try {
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, client, brief, analysis }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      router.push(`/workspace/projects/${data.project.id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not create project");
+      setSaving(false);
+    }
+  }
+  const busy = loading || saving;
+  return (
+    <div className="editor-wrap">
+      <Link className="back-link" href="/workspace">
+        <ArrowLeft size={13} style={{ verticalAlign: "-2px" }} /> Back to
+        workspace
+      </Link>
+      <div className="editor-header">
+        <div>
+          <div className="section-kicker">New project / 01</div>
+          <h1>Start with the brief.</h1>
+          <p>
+            Keep the context intact. Nexora will help you find the shape inside
+            it.
+          </p>
+        </div>
+      </div>
+      <div className="editor-tabs">
+        <span className="editor-tab active">Capture</span>
+        <span className="editor-tab">Analyze</span>
+        <span className="editor-tab">Shape scope</span>
+      </div>
+      <div className="editor-columns">
+        <section className="card">
+          <h2>Project context</h2>
+          <div className="field">
+            <label htmlFor="project-title">Project name</label>
+            <input
+              disabled={busy}
+              id="project-title"
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Northline Studio website"
+              value={title}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="project-client">Client or team</label>
+            <input
+              disabled={busy}
+              id="project-client"
+              onChange={(e) => setClient(e.target.value)}
+              placeholder="e.g. Amina / Northline Studio"
+              value={client}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="project-brief">The brief</label>
+            <textarea
+              disabled={busy}
+              id="project-brief"
+              onChange={(e) => {
+                setBrief(e.target.value);
+                setAnalysis(null);
+                setNotice("");
+                setError("");
+              }}
+              placeholder="Paste the client’s words, notes, and context here…"
+              value={brief}
+            />
+          </div>
+          <button
+            className="button-quiet"
+            disabled={busy}
+            onClick={() => {
+              setBrief(example);
+              setAnalysis(null);
+              setNotice("");
+              setError("");
+            }}
+            type="button"
+          >
+            Use the sample gym brief
+          </button>
+          <div style={{ marginTop: 18 }}>
+            <label
+              style={{
+                color: "#c7c3c3",
+                display: "flex",
+                fontSize: 11,
+                gap: 8,
+              }}
+            >
+              <input
+                checked={preferOpenAI}
+                disabled={busy}
+                onChange={(e) => {
+                  setPreferOpenAI(e.target.checked);
+                  setAnalysis(null);
+                  setNotice("");
+                  setError("");
+                }}
+                type="checkbox"
+              />{" "}
+              Use optional AI analysis if connected
+            </label>
+            <small
+              style={{
+                color: "#777",
+                display: "block",
+                fontSize: 10,
+                margin: "7px 0 0 24px",
+              }}
+            >
+              Uses Built-in analysis / local if AI isn&apos;t connected.
+            </small>
+          </div>
+        </section>
+        <section className="card">
+          <div className="analysis-banner">
+            <Sparkles size={17} color="#ff645a" />
+            <div>
+              <strong>
+                {analysis ? "Brief shape found" : "Ready when you are"}
+              </strong>
+              <span>
+                {analysis
+                  ? `${analysis.mode === "openai" ? "Optional server analysis" : "Built-in analysis / local"}`
+                  : "Analyze to surface useful questions and first scope inputs."}
+              </span>
+            </div>
+          </div>
+          {analysis ? (
+            <>
+              <h2>First read</h2>
+              <p style={{ color: "#c7c3c3", fontSize: 13 }}>
+                {analysis.summary}
+              </p>
+              <h3>Likely audience</h3>
+              <p style={{ color: "#8b8989", fontSize: 12 }}>
+                {analysis.audience}
+              </p>
+              <h3>Likely pages</h3>
+              <div className="tag-list">
+                {analysis.pages.map((page) => (
+                  <span className="tag" key={page}>
+                    {page}
+                  </span>
+                ))}
+              </div>
+              <h3>Questions to resolve</h3>
+              {analysis.questions.map((question) => (
+                <div className="line-item" key={question}>
+                  <span>{question}</span>
+                </div>
+              ))}
+            </>
+          ) : (
+            <div style={{ color: "#777", fontSize: 12, lineHeight: 1.8 }}>
+              <p>We&apos;ll look for:</p>
+              <ul>
+                <li>what the site needs to help people do</li>
+                <li>which pages and content are implied</li>
+                <li>risks and questions worth asking early</li>
+              </ul>
+            </div>
+          )}
+        </section>
+      </div>
+      {error && (
+        <p className="form-error" style={{ marginTop: 18 }}>
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p className="form-success" style={{ marginTop: 18 }}>
+          {notice}
+        </p>
+      )}
+      <div className="editor-bottom">
+        <span style={{ color: "#777", fontSize: 11 }}>
+          {analysis
+            ? "Your first scope will be ready after creation."
+            : "A detailed brief makes the first read more useful."}
+        </span>
+        <div className="editor-bottom-right">
+          {analysis ? (
+            <button className="button-primary" disabled={busy} onClick={create}>
+              {saving ? (
+                <LoaderCircle className="spin" size={14} />
+              ) : (
+                <>
+                  Create project{" "}
+                  <ArrowRight size={14} style={{ verticalAlign: "-2px" }} />
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              className="button-primary"
+              disabled={busy}
+              onClick={analyze}
+            >
+              {loading ? (
+                <LoaderCircle className="spin" size={14} />
+              ) : (
+                <>
+                  Analyze brief{" "}
+                  <ArrowRight size={14} style={{ verticalAlign: "-2px" }} />
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
