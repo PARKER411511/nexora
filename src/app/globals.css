@@ -722,6 +722,7 @@ button:disabled {
   border: 1px solid rgba(255, 76, 67, 0.55);
   border-radius: 7px;
   box-shadow: 0 22px 70px rgba(0, 0, 0, 0.5);
+  color: var(--white);
   bottom: auto;
   left: 50%;
   margin: 0;
