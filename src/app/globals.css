@@ -500,6 +500,9 @@ button:disabled {
   grid-template-columns: 240px 1fr;
   min-height: calc(100vh - 72px);
 }
+.workspace-layout > * {
+  min-width: 0;
+}
 .sidebar {
   border-right: 1px solid var(--line);
   padding: 32px 20px;
