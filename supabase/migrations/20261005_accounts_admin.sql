@@ -20,6 +20,8 @@ create table if not exists private.nexora_admins (
   created_at timestamptz not null default now()
 );
 
+alter table private.nexora_admins enable row level security;
+
 alter table public.profiles enable row level security;
 drop policy if exists profiles_self_select on public.profiles;
 create policy profiles_self_select on public.profiles
