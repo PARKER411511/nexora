@@ -43,8 +43,11 @@ export function MarketingHeader() {
               {link.label}
             </Link>
           ))}
-          <Link className="nav-cta" href="/workspace" onClick={closeMenu}>
-            Open workspace
+          <Link href="/auth/sign-in" onClick={closeMenu}>
+            Sign in
+          </Link>
+          <Link className="nav-cta" href="/auth/sign-up" onClick={closeMenu}>
+            Create account
           </Link>
         </nav>
         <button
@@ -69,8 +72,11 @@ export function MarketingHeader() {
               {link.label}
             </Link>
           ))}
-          <Link className="button-primary" href="/workspace" onClick={closeMenu}>
-            Open workspace
+          <Link className="button-secondary" href="/auth/sign-in" onClick={closeMenu}>
+            Sign in
+          </Link>
+          <Link className="button-primary" href="/auth/sign-up" onClick={closeMenu}>
+            Create account
           </Link>
         </nav>
       </header>

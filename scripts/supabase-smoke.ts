@@ -10,24 +10,32 @@ async function main() {
     ),
     "utf8",
   );
+  const accountsMigration = await readFile(
+    new URL(
+      "../supabase/migrations/20261005_accounts_admin.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   const db = new PGlite("memory://nexora-supabase-smoke", {
     extensions: { pgcrypto },
   });
   try {
     await db.exec(
-      "create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key); insert into auth.users values ('00000000-0000-0000-0000-000000000001'),('00000000-0000-0000-0000-000000000002'),('00000000-0000-0000-0000-000000000003'); create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true),'')::uuid $$;",
+      "create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key, email text, created_at timestamptz not null default now(), raw_user_meta_data jsonb not null default '{}'::jsonb); insert into auth.users(id,email,created_at) values ('00000000-0000-0000-0000-000000000001','one@example.com','2026-10-01T00:00:00Z'),('00000000-0000-0000-0000-000000000002','two@example.com','2026-10-02T00:00:00Z'),('00000000-0000-0000-0000-000000000003','three@example.com','2026-10-03T00:00:00Z'); create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true),'')::uuid $$;",
     );
     await db.exec(migration);
+    await db.exec(accountsMigration);
     const tables = await db.query<{ table_name: string }>(
-      "select table_name from information_schema.tables where table_schema='public' and table_name in ('projects','review_snapshots','review_comments','change_requests','change_proposals') order by table_name",
+      "select table_name from information_schema.tables where table_schema='public' and table_name in ('projects','review_snapshots','review_comments','change_requests','change_proposals','profiles') order by table_name",
     );
-    if (tables.rows.length !== 5)
-      throw new Error(`Expected five Nexora tables, got ${tables.rows.length}`);
+    if (tables.rows.length !== 6)
+      throw new Error(`Expected six Nexora tables, got ${tables.rows.length}`);
     const rpc = await db.query<{ proname: string }>(
-      "select proname from pg_proc where proname in ('nexora_create_project','nexora_update_project','nexora_share_project','nexora_project_history','nexora_get_review','nexora_review_action')",
+      "select proname from pg_proc where proname in ('nexora_create_project','nexora_update_project','nexora_share_project','nexora_project_history','nexora_get_review','nexora_review_action','nexora_get_profile','nexora_update_profile','nexora_is_admin','nexora_admin_customers','nexora_admin_projects','nexora_admin_overview')",
     );
-    if (rpc.rows.length !== 6)
-      throw new Error(`Expected six Nexora RPCs, got ${rpc.rows.length}`);
+    if (rpc.rows.length !== 12)
+      throw new Error(`Expected twelve Nexora RPCs, got ${rpc.rows.length}`);
     const analysis = {
       mode: "local",
       summary: "A clear website brief summary.",
@@ -50,6 +58,111 @@ async function main() {
     await db.exec(
       "set role authenticated; set session request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';",
     );
+    const initialProfile = await db.query<{ profile: any }>(
+      "select public.nexora_update_profile($1::jsonb) as profile",
+      [
+        JSON.stringify({
+          fullName: "Owner One",
+          company: "Nexora Studio",
+          roleTitle: "Designer",
+          website: "https://example.com",
+          bio: "A profile for smoke testing.",
+        }),
+      ],
+    );
+    if (initialProfile.rows[0].profile.fullName !== "Owner One")
+      throw new Error("Profile update did not preserve the owner profile");
+    const ownerIsAdmin = await db.query<{ is_admin: boolean }>(
+      "select public.nexora_is_admin() as is_admin",
+    );
+    if (ownerIsAdmin.rows[0].is_admin !== false)
+      throw new Error("A normal user was treated as an admin");
+    await db.exec("reset role; insert into private.nexora_admins(user_id) values ('00000000-0000-0000-0000-000000000001'); set role authenticated;");
+    const promotedIsAdmin = await db.query<{ is_admin: boolean }>(
+      "select public.nexora_is_admin() as is_admin",
+    );
+    if (promotedIsAdmin.rows[0].is_admin !== true)
+      throw new Error("Allowlisted user was not recognized as an admin");
+    const adminOverview = await db.query<{ overview: any }>(
+      "select public.nexora_admin_overview() as overview",
+    );
+    if (adminOverview.rows[0].overview.customerCount !== 3)
+      throw new Error("Admin overview did not expose the customer count");
+    await db.exec(
+      "set session request.jwt.claim.sub = '00000000-0000-0000-0000-000000000002';",
+    );
+    const ordinaryIsAdmin = await db.query<{ is_admin: boolean }>(
+      "select public.nexora_is_admin() as is_admin",
+    );
+    if (ordinaryIsAdmin.rows[0].is_admin !== false)
+      throw new Error("A non-allowlisted user was treated as an admin");
+    let ordinaryAdminDenied = false;
+    try {
+      await db.query("select public.nexora_admin_overview()");
+    } catch {
+      ordinaryAdminDenied = true;
+    }
+    if (!ordinaryAdminDenied)
+      throw new Error("A non-allowlisted user could read the admin overview");
+    await db.exec("set role anon");
+    let anonymousAdminDenied = false;
+    try {
+      await db.query("select public.nexora_is_admin()");
+    } catch {
+      anonymousAdminDenied = true;
+    }
+    if (!anonymousAdminDenied)
+      throw new Error("Anonymous callers could invoke the admin RPC");
+    await db.exec(
+      "set role authenticated; set session request.jwt.claim.sub = '00000000-0000-0000-0000-000000000002';",
+    );
+    await db.query("select public.nexora_update_profile($1::jsonb)", [
+      JSON.stringify({
+        fullName: "Owner Two",
+        company: "Other Studio",
+        roleTitle: "Developer",
+        website: "",
+        bio: "Another private profile.",
+      }),
+    ]);
+    await db.exec(
+      "set session request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';",
+    );
+    const visibleProfiles = await db.query<{ count: string }>(
+      "select count(*)::text as count from public.profiles",
+    );
+    if (visibleProfiles.rows[0].count !== "1")
+      throw new Error("Profile RLS leaked another owner's profile");
+    let selfPromotionDenied = false;
+    try {
+      await db.query(
+        "insert into private.nexora_admins(user_id) values ('00000000-0000-0000-0000-000000000002')",
+      );
+    } catch {
+      selfPromotionDenied = true;
+    }
+    if (!selfPromotionDenied)
+      throw new Error("An authenticated user could insert an admin row");
+    let selfAdminUpdateDenied = false;
+    try {
+      await db.query(
+        "update private.nexora_admins set created_at=now() where user_id='00000000-0000-0000-0000-000000000001'",
+      );
+    } catch {
+      selfAdminUpdateDenied = true;
+    }
+    if (!selfAdminUpdateDenied)
+      throw new Error("An authenticated user could update the admin allowlist");
+    let otherProfileUpdateDenied = false;
+    try {
+      await db.query(
+        "update public.profiles set full_name='Tampered' where id='00000000-0000-0000-0000-000000000002'",
+      );
+    } catch {
+      otherProfileUpdateDenied = true;
+    }
+    if (!otherProfileUpdateDenied)
+      throw new Error("An authenticated user could update another profile");
     let malformedDenied = false;
     try {
       await db.query("select public.nexora_create_project($1::jsonb)", [
@@ -119,6 +232,13 @@ async function main() {
       ],
     );
     const project = created.rows[0].project as { id: string };
+    const adminSummary = await db.query<{ overview: any }>(
+      "select public.nexora_admin_overview() as overview",
+    );
+    const summaryText = JSON.stringify(adminSummary.rows[0].overview);
+    for (const secretField of ["brief", "scope", "reviewToken", "token"])
+      if (summaryText.includes(`\"${secretField}\"`))
+        throw new Error(`Admin overview exposed ${secretField}`);
     const shared = await db.query<{ project: { reviewToken: string } }>(
       "select public.nexora_share_project($1::uuid) as project",
       [project.id],
@@ -294,7 +414,7 @@ async function main() {
     if (!conflictingDenied)
       throw new Error("Conflicting proposal decision was accepted");
     console.log(
-      "Supabase migration smoke passed: five tables and six RPCs created.",
+      "Supabase migration smoke passed: six tables and twelve RPCs created.",
     );
   } finally {
     await db.close();

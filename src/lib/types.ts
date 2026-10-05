@@ -99,3 +99,44 @@ export type ReviewSnapshot = Project & {
   snapshotCreatedAt: string;
   changeRequests: ChangeRequest[];
 };
+
+export type AccountProfile = {
+  id?: string;
+  fullName: string;
+  company: string;
+  roleTitle: string;
+  website: string;
+  bio: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type AdminCustomer = {
+  id: string;
+  email: string;
+  name: string;
+  company: string;
+  joinedAt: string;
+  projectCount: number;
+};
+
+export type AdminProject = {
+  id: string;
+  name: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  customer: {
+    id: string;
+    email: string;
+    name: string;
+    company: string;
+  };
+};
+
+export type AdminOverview = {
+  customerCount: number;
+  projectCount: number;
+  customers: AdminCustomer[];
+  projects: AdminProject[];
+};

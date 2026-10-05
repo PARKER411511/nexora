@@ -6,9 +6,21 @@ Create a Supabase project, copy its Project URL (`https://otvaswuedpltjuriurer.s
 
 ## 2. Apply the schema
 
-Run `supabase/migrations/20261005_private_workspace.sql` in the Supabase SQL editor, or use `supabase db push` after linking the project with the Supabase CLI. The migration creates owner-scoped tables, RLS policies, and narrow transactional RPCs for project mutations, snapshots, history, and authenticated review.
+Run `supabase/migrations/20261005_private_workspace.sql` followed by `supabase/migrations/20261005_accounts_admin.sql` in the Supabase SQL editor, or use `supabase db push` after linking the project with the Supabase CLI. The migrations create owner-scoped workspace tables, the self-only profile table, a private database-maintained admin allowlist, and narrow RPCs for project mutations, account profiles, admin summaries, snapshots, history, and authenticated review.
 
-The repository has no Docker, PostgreSQL, or Supabase CLI available in this environment. `npm run test:supabase` does execute this migration in isolated PGlite and checks owner isolation, authenticated token review, anonymous denial, malformed payload rejection, approval locking, and proposal decisions. Hosted Supabase Auth claims, network behavior, and true concurrent transactions still need verification after activation.
+The repository has no Docker, PostgreSQL, or Supabase CLI available in this environment. `npm run test:supabase` executes both migrations in isolated PGlite and checks owner isolation, profile isolation, admin allowlist authorization, authenticated token review, anonymous denial, malformed payload rejection, approval locking, and proposal decisions. Hosted Supabase Auth claims, network behavior, and true concurrent transactions still need verification after activation.
+
+### Bootstrap the first admin
+
+After the account has been created and its email confirmed, run this reviewed SQL once in the hosted SQL editor. It grants no role based on email matching at runtime and does not expose the allowlist to clients:
+
+```sql
+insert into private.nexora_admins (user_id)
+select id from auth.users where lower(email) = lower('nihalstar1000@gmail.com')
+on conflict (user_id) do nothing;
+```
+
+Verify the result in the SQL editor before opening `/admin`. Future administrators should use the same explicit, reviewed process with the intended confirmed email; never add a signup metadata field or client route that can self-grant access.
 
 ## 3. Configure Auth
 
@@ -22,7 +34,7 @@ For Vercel, set the same publishable variables plus `APP_ORIGIN=https://nexora-o
 
 Use the same callback path in the email confirmation and password recovery templates. The app validates `next` as a same-site path before redirecting.
 
-The default Supabase SMTP sender is intended for project-team addresses and is rate-limited. Configure a verified custom SMTP provider before inviting general users to sign up or recover passwords.
+The default Supabase SMTP sender is intended for project-team addresses and is rate-limited. This project does not send email itself. Configure a verified custom SMTP provider before inviting general users to sign up or recover passwords; until then, signup confirmation and password recovery may be delayed or unavailable.
 
 ## 4. Run
 

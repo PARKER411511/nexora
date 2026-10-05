@@ -25,7 +25,8 @@ export function MarketingFooter() {
           <h4>Workspace</h4>
           <Link href="/workspace">Overview</Link>
           <Link href="/workspace/new">New project</Link>
-          <Link href="/workspace">Open workspace</Link>
+          <Link href="/auth/sign-in">Sign in</Link>
+          <Link href="/auth/sign-up">Create account</Link>
         </div>
         <div className="footer-col">
           <h4>Principles</h4>

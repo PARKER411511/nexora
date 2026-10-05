@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  AccountProfile,
+  AdminOverview,
   BriefAnalysis,
   ChangeProposal,
   Project,
@@ -14,6 +16,11 @@ export class CloudDomainError extends Error {
   constructor(message: string, status = 400) {
     super(message);
     this.status = status;
+  }
+}
+export class AdminRequiredError extends CloudDomainError {
+  constructor(message = "Admin access required.") {
+    super(message, 403);
   }
 }
 export function isCloudSetupError(error: unknown) {
@@ -137,4 +144,43 @@ export async function cloudReviewAction(
     await owner()
   ).rpc("nexora_review_action", { p_token: token, p_action: input });
   return one<ReviewSnapshot>(data, error);
+}
+
+const emptyProfile: AccountProfile = {
+  fullName: "",
+  company: "",
+  roleTitle: "",
+  website: "",
+  bio: "",
+};
+
+export async function cloudGetProfile(): Promise<AccountProfile> {
+  const { data, error } = await (await owner()).rpc("nexora_get_profile");
+  if (error) throwRpc(error);
+  return (data ?? emptyProfile) as AccountProfile;
+}
+
+export async function cloudUpdateProfile(
+  profile: Omit<AccountProfile, "id" | "createdAt" | "updatedAt">,
+): Promise<AccountProfile> {
+  const { data, error } = await (await owner()).rpc("nexora_update_profile", {
+    p_profile: profile,
+  });
+  return one<AccountProfile>(data, error);
+}
+
+export async function cloudIsAdmin(): Promise<boolean> {
+  const { data, error } = await (await owner()).rpc("nexora_is_admin");
+  if (error) throwRpc(error);
+  return data === true;
+}
+
+export async function cloudGetAdminOverview(): Promise<AdminOverview> {
+  const { data, error } = await (await owner()).rpc("nexora_admin_overview");
+  if (error) {
+    if (/admin access required/i.test(error.message ?? ""))
+      throw new AdminRequiredError();
+    throwRpc(error);
+  }
+  return data as AdminOverview;
 }

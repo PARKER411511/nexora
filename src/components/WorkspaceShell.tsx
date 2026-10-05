@@ -1,17 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { FolderKanban, LayoutDashboard, Plus, Sparkles } from "lucide-react";
+import {
+  FolderKanban,
+  LayoutDashboard,
+  Plus,
+  ShieldCheck,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import { SignOutButton } from "./SignOutButton";
 
-export function WorkspaceShell({ children }: { children: React.ReactNode }) {
+export function WorkspaceShell({
+  children,
+  isAdmin = false,
+}: {
+  children: React.ReactNode;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
   const isOverview = pathname === "/workspace";
   const isProjects =
     pathname === "/workspace/projects" ||
     pathname.startsWith("/workspace/projects/");
   const isNewBrief = pathname === "/workspace/new";
+  const isProfile = pathname === "/workspace/profile";
+  const isAdminPage = pathname.startsWith("/admin");
   return (
     <div className="workspace-shell">
       <header className="workspace-topbar">
@@ -52,6 +67,23 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           >
             <Sparkles size={15} /> New brief
           </Link>
+          <p className="sidebar-label sidebar-label-spaced">Account</p>
+          <Link
+            aria-current={isProfile ? "page" : undefined}
+            className={`side-link ${isProfile ? "active" : ""}`}
+            href="/workspace/profile"
+          >
+            <UserRound size={15} /> Profile
+          </Link>
+          {isAdmin && (
+            <Link
+              aria-current={isAdminPage ? "page" : undefined}
+              className={`side-link ${isAdminPage ? "active" : ""}`}
+              href="/admin"
+            >
+              <ShieldCheck size={15} /> Admin
+            </Link>
+          )}
         </aside>
         <main>{children}</main>
       </div>

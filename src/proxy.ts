@@ -28,7 +28,9 @@ export async function proxy(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const pathname = request.nextUrl.pathname;
   if (
-    (pathname.startsWith("/workspace") || pathname.startsWith("/review/")) &&
+    (pathname.startsWith("/workspace") ||
+      pathname.startsWith("/review/") ||
+      pathname.startsWith("/admin")) &&
     !data?.claims?.sub
   ) {
     const url = request.nextUrl.clone();
@@ -50,6 +52,7 @@ export const config = {
   matcher: [
     "/workspace/:path*",
     "/review/:path*",
+    "/admin/:path*",
     "/auth/callback",
     "/auth/sign-out",
   ],

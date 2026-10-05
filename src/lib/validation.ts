@@ -150,3 +150,18 @@ export function validateChangeProposalInput(input: Record<string, unknown>) {
     rationale,
   };
 }
+
+export function validateProfileInput(input: Record<string, unknown>) {
+  const fullName = stringValue(input.fullName);
+  const company = stringValue(input.company);
+  const roleTitle = stringValue(input.roleTitle);
+  const website = stringValue(input.website);
+  const bio = stringValue(input.bio);
+  if (fullName.length > 120 || company.length > 120 || roleTitle.length > 120)
+    throw new Error("Keep your name, company, and role under 120 characters.");
+  if (website.length > 300 || bio.length > 2000)
+    throw new Error("Keep your website under 300 and bio under 2,000 characters.");
+  if (website && !/^https?:\/\/[^\s]+$/i.test(website))
+    throw new Error("Use a full website address starting with https://.");
+  return { fullName, company, roleTitle, website, bio };
+}
