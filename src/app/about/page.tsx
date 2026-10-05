@@ -6,7 +6,8 @@ import { MarketingHeader } from "@/components/MarketingHeader";
 
 export const metadata: Metadata = {
   title: "About Nexora — Clear project conversations",
-  description: "Learn why Nexora exists and the principles behind its brief-to-scope workflow.",
+  description:
+    "Learn why Nexora exists and the principles behind its brief-to-scope workflow.",
 };
 
 const principles = [
@@ -41,7 +42,7 @@ export default function AboutPage() {
             scope. It gives the early decisions a calm place to land.
           </p>
           <Link className="button-primary" href="/workspace">
-            Try the free demo <ArrowUpRight size={13} />
+            Create a private workspace <ArrowUpRight size={13} />
           </Link>
         </section>
 
@@ -58,8 +59,8 @@ export default function AboutPage() {
             </p>
             <p>
               The current product is intentionally small and honest: a free
-              browser demo, a private local workspace, a built-in analyzer, and
-              a visible way to handle work that appears after approval.
+              private accounts, a built-in analyzer, and a visible way to handle
+              work that appears after approval.
             </p>
           </div>
           <div className="about-statements">
@@ -100,17 +101,16 @@ export default function AboutPage() {
         <section className="detail-section privacy-section" id="privacy">
           <div>
             <div className="section-kicker">Honest limits</div>
-            <h2>Private by default in this demo.</h2>
+            <h2>Private by default in your account.</h2>
           </div>
           <div className="privacy-copy">
             <p>
-              Projects are saved only in this browser. Clearing this site’s
-              data removes saved projects and review links. A copied review URL
-              will not reveal the project from another browser profile or device.
+              Projects are saved to your private account. Access requires a
+              signed-in account and the correct review snapshot token.
             </p>
             <p>
-              There are no accounts, billing charges, public cloud projects, or
-              team permissions connected to this demo.
+              Nexora has no billing charges or paid feature gates. Pricing cards
+              are illustrative portfolio examples; the workspace is free.
             </p>
           </div>
         </section>
@@ -121,7 +121,7 @@ export default function AboutPage() {
             <h2>Bring the next conversation into focus.</h2>
           </div>
           <Link className="button-primary" href="/workspace">
-            Open the free demo <ArrowUpRight size={13} />
+            Open your workspace <ArrowUpRight size={13} />
           </Link>
         </section>
       </main>

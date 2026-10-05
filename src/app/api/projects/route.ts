@@ -3,14 +3,22 @@ import { analyzeBrief, makeDefaultScope } from "@/lib/analyzer";
 import { isValidBriefAnalysis, validateProjectInput } from "@/lib/validation";
 import type { BriefAnalysis } from "@/lib/types";
 import { sameOriginError } from "@/lib/origin";
-import { isDemoMode } from "@/lib/mode";
+import {
+  cloudCreateProject,
+  cloudListProjects,
+} from "@/lib/supabase/repository";
+import { cloudErrorResponse } from "@/lib/supabase/api";
+import { requireServerUser } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  if (isDemoMode()) return NextResponse.json({ projects: [], mode: "demo" });
-  const { listProjects } = await import("@/lib/db");
-  return NextResponse.json({ projects: listProjects() });
+  try {
+    await requireServerUser();
+    return NextResponse.json({ projects: await cloudListProjects() });
+  } catch (e) {
+    return cloudErrorResponse(e, "Could not load projects");
+  }
 }
 
 export async function POST(request: Request) {
@@ -18,12 +26,7 @@ export async function POST(request: Request) {
   if (originError)
     return NextResponse.json({ error: originError }, { status: 403 });
   try {
-    if (isDemoMode())
-      return NextResponse.json(
-        { error: "The browser demo saves projects in this browser." },
-        { status: 409 },
-      );
-    const { createProject } = await import("@/lib/db");
+    await requireServerUser();
     const body = (await request.json()) as Record<string, unknown>;
     const brief = typeof body.brief === "string" ? body.brief : "";
     const analysisCandidate: unknown = body.analysis ?? analyzeBrief(brief);
@@ -36,16 +39,10 @@ export async function POST(request: Request) {
       scope: body.scope ?? makeDefaultScope(analysis),
     });
     return NextResponse.json(
-      { project: createProject(input) },
+      { project: await cloudCreateProject(input) },
       { status: 201 },
     );
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Could not create project",
-      },
-      { status: 400 },
-    );
+    return cloudErrorResponse(error, "Could not create project");
   }
 }

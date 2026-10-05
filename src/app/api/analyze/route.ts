@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { analyzeBrief, analyzeWithOpenAI } from "@/lib/analyzer";
 import { sameOriginError } from "@/lib/origin";
-import { isDemoMode } from "@/lib/mode";
+import { requireServerUser } from "@/lib/supabase/server";
+import { cloudErrorResponse } from "@/lib/supabase/api";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,7 @@ export async function POST(request: Request) {
   if (originError)
     return NextResponse.json({ error: originError }, { status: 403 });
   try {
+    await requireServerUser();
     const body = (await request.json()) as {
       brief?: unknown;
       preferOpenAI?: unknown;
@@ -23,11 +25,6 @@ export async function POST(request: Request) {
         { error: "Add a brief between 24 and 20,000 characters." },
         { status: 400 },
       );
-    if (isDemoMode())
-      return NextResponse.json({
-        analysis: analyzeBrief(body.brief),
-        notice: "Using Built-in analysis / local in the browser demo.",
-      });
     if (
       body.preferOpenAI !== undefined &&
       typeof body.preferOpenAI !== "boolean"
@@ -52,12 +49,6 @@ export async function POST(request: Request) {
         : undefined,
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Could not analyze brief",
-      },
-      { status: 400 },
-    );
+    return cloudErrorResponse(error, "Could not analyze brief");
   }
 }

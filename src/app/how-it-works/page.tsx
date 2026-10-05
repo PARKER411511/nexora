@@ -6,7 +6,8 @@ import { MarketingHeader } from "@/components/MarketingHeader";
 
 export const metadata: Metadata = {
   title: "How it works — Nexora",
-  description: "See how Nexora turns a rough web brief into a reviewable scope and a clear change process.",
+  description:
+    "See how Nexora turns a rough web brief into a reviewable scope and a clear change process.",
 };
 
 const stages = [
@@ -14,37 +15,43 @@ const stages = [
     number: "01",
     title: "Capture the brief",
     text: "Paste the brief as it arrived. Keep the useful uncertainty instead of trying to sound finished too early.",
-    detail: "Prompt: what is changing, who is it for, and what would make the project feel successful?",
+    detail:
+      "Prompt: what is changing, who is it for, and what would make the project feel successful?",
   },
   {
     number: "02",
     title: "Analyze the shape",
     text: "Nexora surfaces audience, goals, likely pages, needs, risks, and questions for the first conversation.",
-    detail: "The built-in analyzer runs locally and is labelled clearly. You can edit every result before it becomes scope.",
+    detail:
+      "The built-in analyzer runs locally and is labelled clearly. You can edit every result before it becomes scope.",
   },
   {
     number: "03",
     title: "Build the scope",
     text: "Turn the analysis into deliverables, included work, exclusions, milestones, and revision rounds.",
-    detail: "The boundary is part of the deliverable: an explicit out-of-scope list gives the next conversation somewhere to start.",
+    detail:
+      "The boundary is part of the deliverable: an explicit out-of-scope list gives the next conversation somewhere to start.",
   },
   {
     number: "04",
     title: "Share for review",
     text: "Send a snapshot that a client can read without opening the owner editor. They can leave feedback or approve.",
-    detail: "In the free browser demo, the review link works in the same browser profile and device that created it.",
+    detail:
+      "Private review access is available to signed-in collaborators with a valid snapshot link.",
   },
   {
     number: "05",
     title: "Lock the approval",
     text: "Approval freezes the exact scope that was reviewed. The owner can still see earlier feedback and superseded snapshots.",
-    detail: "A saved approval does not silently change when a later idea appears.",
+    detail:
+      "A saved approval does not silently change when a later idea appears.",
   },
   {
     number: "06",
     title: "Handle the next request",
     text: "A client can submit a separate change request. The owner writes the price, affected deliverables, rationale, and timeline impact.",
-    detail: "The client accepts or declines the proposal; the approved baseline remains unchanged either way.",
+    detail:
+      "The client accepts or declines the proposal; the approved baseline remains unchanged either way.",
   },
 ];
 
@@ -63,10 +70,10 @@ export default function HowItWorksPage() {
           </p>
           <div className="detail-hero-actions">
             <Link className="button-primary" href="/workspace">
-              Try the free demo <ArrowUpRight size={13} />
+              Create a private workspace <ArrowUpRight size={13} />
             </Link>
             <span className="detail-note">
-              Free to explore · no account or checkout
+              Free workspace · account required
             </span>
           </div>
         </section>
@@ -90,13 +97,17 @@ export default function HowItWorksPage() {
 
         <section className="detail-section example-section" id="scope-preview">
           <div className="detail-section-heading">
-            <div className="section-kicker">Concrete example · fictional project</div>
+            <div className="section-kicker">
+              Concrete example · fictional project
+            </div>
             <h2>What a useful scope can say in one screen.</h2>
           </div>
           <div className="scope-preview scope-preview-large">
             <div className="scope-preview-head">
               <div>
-                <span className="mono-label">Example / fictional · Northstar Gym</span>
+                <span className="mono-label">
+                  Example / fictional · Northstar Gym
+                </span>
                 <h3>Membership site and booking path</h3>
               </div>
               <span className="status status-shared">Review</span>
@@ -108,7 +119,9 @@ export default function HowItWorksPage() {
               </div>
               <div>
                 <span>Deliverables</span>
-                <strong>Responsive site, content structure, booking links</strong>
+                <strong>
+                  Responsive site, content structure, booking links
+                </strong>
               </div>
               <div>
                 <span>Included</span>
@@ -135,21 +148,29 @@ export default function HowItWorksPage() {
             <ShieldCheck size={19} />
             <div>
               <h3>Approval is a snapshot</h3>
-              <p>Approved work stays readable even when the project keeps moving.</p>
+              <p>
+                Approved work stays readable even when the project keeps moving.
+              </p>
             </div>
           </div>
           <div className="principle-point">
             <MessageCircle size={19} />
             <div>
               <h3>Changes get a place</h3>
-              <p>New requests become visible proposals instead of quiet scope drift.</p>
+              <p>
+                New requests become visible proposals instead of quiet scope
+                drift.
+              </p>
             </div>
           </div>
           <div className="principle-point">
             <Check size={19} />
             <div>
               <h3>Export when you are ready</h3>
-              <p>Keep a Markdown scope or use the review page print view for a PDF.</p>
+              <p>
+                Keep a Markdown scope or use the review page print view for a
+                PDF.
+              </p>
             </div>
           </div>
         </section>
@@ -160,7 +181,7 @@ export default function HowItWorksPage() {
             <h2>Start with the words you already have.</h2>
           </div>
           <Link className="button-primary" href="/workspace">
-            Open the free demo <ArrowUpRight size={13} />
+            Open your workspace <ArrowUpRight size={13} />
           </Link>
         </section>
       </main>

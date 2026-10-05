@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { sameOriginError } from "@/lib/origin";
 import { validateChangeProposalInput } from "@/lib/validation";
-import { isDemoMode } from "@/lib/mode";
+import {
+  cloudCreateChangeProposal,
+  cloudGetHistory,
+} from "@/lib/supabase/repository";
+import { cloudErrorResponse } from "@/lib/supabase/api";
+import { requireServerUser } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -9,25 +14,12 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (isDemoMode())
-    return NextResponse.json(
-      { error: "The browser demo reads history from this browser." },
-      { status: 409 },
-    );
   try {
     const { id } = await params;
-    const { getProjectHistory } = await import("@/lib/db");
-    return NextResponse.json({ history: getProjectHistory(id) });
+    await requireServerUser();
+    return NextResponse.json({ history: await cloudGetHistory(id) });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Could not load change history",
-      },
-      { status: 404 },
-    );
+    return cloudErrorResponse(error, "Could not load change history");
   }
 }
 
@@ -39,25 +31,14 @@ export async function POST(
   if (originError)
     return NextResponse.json({ error: originError }, { status: 403 });
   try {
-    if (isDemoMode())
-      return NextResponse.json(
-        { error: "The browser demo saves proposals in this browser." },
-        { status: 409 },
-      );
     const { id } = await params;
-    const { createChangeProposal } = await import("@/lib/db");
+    await requireServerUser();
     const input = validateChangeProposalInput(await request.json());
     return NextResponse.json(
-      { history: createChangeProposal(id, input) },
+      { history: await cloudCreateChangeProposal(id, input) },
       { status: 201 },
     );
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Could not save proposal",
-      },
-      { status: 400 },
-    );
+    return cloudErrorResponse(error, "Could not save proposal");
   }
 }

@@ -20,15 +20,6 @@ import type {
   ProjectHistory,
   Scope,
 } from "@/lib/types";
-import {
-  demoCreateChangeProposal,
-  demoExportMarkdown,
-  demoGetHistory,
-  demoGetProject,
-  demoShareProject,
-  demoUpdateProject,
-  DemoStorageError,
-} from "@/lib/demo-store";
 
 function EditableList({
   label,
@@ -85,11 +76,9 @@ function EditableList({
 
 export function ProjectEditor({
   project: initial,
-  demoMode = false,
   initialTab,
 }: {
   project: Project;
-  demoMode?: boolean;
   initialTab?: "scope" | "analysis" | "changes";
 }) {
   const [project, setProject] = useState(initial);
@@ -125,10 +114,7 @@ export function ProjectEditor({
     try {
       let latestHistory: ProjectHistory;
       let latestProject: Project;
-      if (demoMode) {
-        latestHistory = demoGetHistory(project.id);
-        latestProject = demoGetProject(project.id) ?? project;
-      } else {
+      {
         const [historyResponse, projectResponse] = await Promise.all([
           fetch(`/api/projects/${project.id}/history`),
           fetch(`/api/projects/${project.id}`),
@@ -200,9 +186,7 @@ export function ProjectEditor({
     setMessage("");
     setSaving(true);
     try {
-      const saved = demoMode
-        ? demoUpdateProject(project.id, project)
-        : await (async () => {
+      const saved = await (async () => {
             const response = await fetch(`/api/projects/${project.id}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
@@ -233,9 +217,7 @@ export function ProjectEditor({
     setMessage("");
     setSharing(true);
     try {
-      const saved = demoMode
-        ? demoUpdateProject(project.id, project)
-        : await (async () => {
+      const saved = await (async () => {
             const saveResponse = await fetch(`/api/projects/${project.id}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
@@ -248,9 +230,7 @@ export function ProjectEditor({
       setProject(saved);
       setPendingProject(null);
       setDirtyState(false);
-      const shared = demoMode
-        ? demoShareProject(project.id)
-        : await (async () => {
+      const shared = await (async () => {
             const response = await fetch(`/api/projects/${project.id}/share`, {
               method: "POST",
             });
@@ -263,7 +243,7 @@ export function ProjectEditor({
       setMessage("Scope saved and snapshot ready to review.");
     } catch (e) {
       setError(
-        e instanceof DemoStorageError || e instanceof Error
+        e instanceof Error
           ? e.message
           : "Could not create review link",
       );
@@ -282,28 +262,6 @@ export function ProjectEditor({
       setMessage("Review link copied.");
     } catch {
       setMessage("Select the link to copy it manually.");
-    }
-  }
-
-  function exportMarkdown() {
-    try {
-      const blob = new Blob([demoExportMarkdown(project.id)], {
-        type: "text/markdown;charset=utf-8",
-      });
-      const link = document.createElement("a");
-      const objectUrl = URL.createObjectURL(blob);
-      link.href = objectUrl;
-      link.download = `${project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.md`;
-      document.body.appendChild(link);
-      link.click();
-      window.setTimeout(() => {
-        URL.revokeObjectURL(objectUrl);
-        link.remove();
-      }, 1000);
-    } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Could not export scope",
-      );
     }
   }
 
@@ -340,24 +298,7 @@ export function ProjectEditor({
           </p>
         </div>
         <div className="editor-actions">
-          {demoMode ? (
-            <button
-              className="button-secondary"
-              onClick={exportMarkdown}
-              type="button"
-            >
-              <Download size={13} style={{ verticalAlign: "-2px" }} /> Export
-              markdown
-            </button>
-          ) : (
-            <a
-              className="button-secondary"
-              href={`/api/projects/${project.id}/export`}
-            >
-              <Download size={13} style={{ verticalAlign: "-2px" }} /> Export
-              markdown
-            </a>
-          )}
+          <a className="button-secondary" href={`/api/projects/${project.id}/export`}><Download size={13} style={{ verticalAlign: "-2px" }} /> Export markdown</a>
           {project.reviewToken && (
             <Link
               className="button-secondary"
@@ -370,12 +311,6 @@ export function ProjectEditor({
           )}
         </div>
       </div>
-      {demoMode && (
-        <div className="demo-banner" role="status">
-          <strong>Browser demo</strong>
-          <span>This project and its review link stay in this browser.</span>
-        </div>
-      )}
       {locked && (
         <div className="locked-note" style={{ marginBottom: 20 }}>
           <Check size={14} style={{ verticalAlign: "-2px" }} /> Approved on{" "}
@@ -644,7 +579,6 @@ export function ProjectEditor({
         />
       ) : (
         <ChangeManagementPanel
-          demoMode={demoMode}
           history={history}
           loading={historyLoading}
           onHistory={setHistory}
@@ -801,14 +735,12 @@ function AnalysisPanel({
 }
 
 function ChangeManagementPanel({
-  demoMode,
   history,
   loading,
   onHistory,
   onRefresh,
   project,
 }: {
-  demoMode: boolean;
   history: ProjectHistory | null;
   loading: boolean;
   onHistory: (history: ProjectHistory) => void;
@@ -856,8 +788,7 @@ function ChangeManagementPanel({
         timelineImpact: timeline,
         rationale,
       };
-      if (demoMode) onHistory(demoCreateChangeProposal(project.id, input));
-      else {
+      {
         const response = await fetch(`/api/projects/${project.id}/changes`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -871,7 +802,7 @@ function ChangeManagementPanel({
       setSaved("Proposal sent for client decision.");
     } catch (e) {
       setError(
-        e instanceof DemoStorageError || e instanceof Error
+        e instanceof Error
           ? e.message
           : "Could not send proposal",
       );

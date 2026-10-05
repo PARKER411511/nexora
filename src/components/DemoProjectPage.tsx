@@ -64,5 +64,5 @@ export function DemoProjectPage({ id }: { id: string }) {
         </div>
       </div>
     );
-  return <ProjectEditor demoMode initialTab={initialTab} project={project} />;
+  return <ProjectEditor initialTab={initialTab} project={project} />;
 }

@@ -2,16 +2,16 @@
 
 const plans = [
   {
-    name: "Free demo",
+    name: "Free workspace",
     price: "$0",
     cadence: "always",
-    description: "Try the complete brief-to-scope flow in your browser.",
+    description: "Try the complete brief-to-scope flow in a private account.",
     items: [
       "Built-in brief analysis",
       "Scope and milestone editing",
       "Review, approval, and change flow",
     ],
-    cta: "Try the demo",
+    cta: "Open workspace",
     href: "/workspace",
     label: "Available now",
     featured: true,
@@ -22,11 +22,11 @@ const plans = [
     cadence: "/ month",
     description: "An example bundle for an independent designer or developer.",
     items: [
-      "Everything in Free demo",
+      "Everything in Free workspace",
       "A private project library",
       "Reusable scope templates",
     ],
-    cta: "Explore free demo",
+    cta: "Explore workspace",
     href: "/workspace",
     label: "Example price",
     featured: false,
@@ -41,7 +41,7 @@ const plans = [
       "Shared project handoffs",
       "Team-level workspace views",
     ],
-    cta: "Explore free demo",
+    cta: "Explore workspace",
     href: "/workspace",
     label: "Example price",
     featured: false,

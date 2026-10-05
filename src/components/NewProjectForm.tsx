@@ -11,12 +11,6 @@ import {
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BriefAnalysis } from "@/lib/types";
-import {
-  demoAnalyze,
-  demoCreateProject,
-  DemoStorageError,
-} from "@/lib/demo-store";
-import { isDemoModeClient } from "@/lib/mode";
 
 const example =
   "A warm, editorial website for a neighborhood strength studio. It should explain the coaching approach, show class formats, help new members book an intro session, and feel confident without looking like a generic fitness template. The studio has a new identity, a few photography selects, and wants to launch before the autumn intake.";
@@ -37,11 +31,6 @@ export function NewProjectForm() {
     setNotice("");
     setLoading(true);
     try {
-      if (isDemoModeClient()) {
-        setAnalysis(demoAnalyze(brief));
-        setNotice("Using Built-in analysis / local in this browser demo.");
-        return;
-      }
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -53,7 +42,7 @@ export function NewProjectForm() {
       if (data.notice) setNotice(data.notice);
     } catch (e) {
       setError(
-        e instanceof DemoStorageError || e instanceof Error
+        e instanceof Error
           ? e.message
           : "Could not analyze brief",
       );
@@ -65,16 +54,6 @@ export function NewProjectForm() {
     setError("");
     setSaving(true);
     try {
-      if (isDemoModeClient()) {
-        const project = demoCreateProject({
-          title,
-          client,
-          brief,
-          analysis: analysis!,
-        });
-        router.push(`/workspace/projects/${project.id}`);
-        return;
-      }
       const response = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -85,7 +64,7 @@ export function NewProjectForm() {
       router.push(`/workspace/projects/${data.project.id}`);
     } catch (e) {
       setError(
-        e instanceof DemoStorageError || e instanceof Error
+        e instanceof Error
           ? e.message
           : "Could not create project",
       );
@@ -109,12 +88,6 @@ export function NewProjectForm() {
           </p>
         </div>
       </div>
-      {isDemoModeClient() && (
-        <div className="demo-banner" role="status">
-          <strong>Browser demo</strong>
-          <span>Projects and review links stay in this browser.</span>
-        </div>
-      )}
       <div className="editor-tabs">
         <span className="editor-tab active">Capture</span>
         <span className="editor-tab">Analyze</span>

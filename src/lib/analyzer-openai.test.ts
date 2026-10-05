@@ -49,7 +49,7 @@ test("OpenAI adapter parses the raw Responses REST output envelope", async () =>
   }
 });
 
-test("malformed or refused provider output falls back to local analysis at the API boundary", async () => {
+test("malformed or refused provider output is covered by the adapter while an unconfigured API fails closed", async () => {
   const previousKey = process.env.OPENAI_API_KEY;
   const previousFetch = globalThis.fetch;
   process.env.OPENAI_API_KEY = "test-key";
@@ -81,9 +81,8 @@ test("malformed or refused provider output falls back to local analysis at the A
       analysis: { mode: string };
       notice?: string;
     };
-    assert.equal(response.status, 200);
-    assert.equal(data.analysis.mode, "local");
-    assert.match(data.notice || "", /Built-in analysis/);
+    assert.equal(response.status, 503);
+    assert.match((data as unknown as { error?: string }).error || "", /Cloud storage is not configured/);
   } finally {
     globalThis.fetch = previousFetch;
     if (previousKey === undefined) delete process.env.OPENAI_API_KEY;

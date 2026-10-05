@@ -64,5 +64,5 @@ export function DemoReviewPage({ token }: { token: string }) {
         </div>
       </main>
     );
-  return <ReviewClient demoMode initial={review} />;
+  return <ReviewClient initial={review} />;
 }

@@ -6,10 +6,12 @@ const localOrigins = new Set([
 export function sameOriginError(request: Request): string | null {
   const origin = request.headers.get("origin");
   if (!origin)
-    return "This local API requires a browser Origin header for mutating requests.";
+    return "This API requires a browser Origin header for mutating requests.";
   const configured = process.env.APP_ORIGIN?.replace(/\/$/, "");
-  const allowed = configured ? new Set([configured]) : localOrigins;
-  return allowed.has(origin.replace(/\/$/, ""))
+  const requestOrigin = (() => { try { return new URL(request.url).origin; } catch { return ""; } })();
+  const allowed = configured ? new Set([configured]) : new Set([...localOrigins, requestOrigin]);
+  let normalized = ""; try { normalized = new URL(origin).origin; } catch { /* invalid origin */ }
+  return allowed.has(normalized)
     ? null
     : "This local API only accepts browser requests from the configured Nexora origin.";
 }

@@ -69,14 +69,14 @@ const faqs = [
       "Approval locks the snapshot. A later note becomes a separate change request with an explicit proposal and decision.",
   },
   {
-    question: "Where does the free demo save project data?",
+    question: "Where does Nexora save project data?",
     answer:
-      "The browser demo keeps projects in this browser. Review links work on the same browser profile and device.",
+      "Your private workspace stores projects in your account. Signed-in collaborators can review a shared snapshot.",
   },
   {
     question: "Are the paid prices real?",
     answer:
-      "No. Solo and Studio prices are illustrative portfolio examples. The whole current demo is free and has no billing flow.",
+      "No. Solo and Studio prices are illustrative portfolio examples. The current workspace is free and has no billing flow.",
   },
 ];
 export default function Home() {
@@ -101,7 +101,7 @@ export default function Home() {
             </p>
             <div className="hero-actions">
               <Link className="button-primary" href="/workspace">
-                Try the free demo <ArrowUpRight size={13} />
+                Create a private workspace <ArrowUpRight size={13} />
               </Link>
               <Link className="play-link" href="/how-it-works">
                 <span>
@@ -140,7 +140,9 @@ export default function Home() {
         <section className="landing-section section-split" id="product">
           <div>
             <div className="section-kicker">01 — The problem</div>
-            <h2 className="section-title">A more capable first conversation.</h2>
+            <h2 className="section-title">
+              A more capable first conversation.
+            </h2>
             <p className="section-copy">
               The strongest projects start before the first screen is designed.
               Nexora gives the brief somewhere useful to go: into a shared scope
@@ -190,7 +192,9 @@ export default function Home() {
           <div className="section-kicker">03 — The output</div>
           <div className="output-grid">
             <div>
-              <h2 className="section-title">A scope clients can actually react to.</h2>
+              <h2 className="section-title">
+                A scope clients can actually react to.
+              </h2>
               <p className="section-copy">
                 Start with the messy context, then turn it into a compact plan:
                 who it is for, what gets made, what stays out, and how the work
@@ -232,7 +236,9 @@ export default function Home() {
           <div className="workflow-grid">
             <div>
               <div className="section-kicker">04 — How it works</div>
-              <h2 className="section-title">From raw notes to a confident yes.</h2>
+              <h2 className="section-title">
+                From raw notes to a confident yes.
+              </h2>
               <p className="section-copy">
                 The detailed workflow keeps the useful questions in order while
                 leaving the final decisions with you and your client.
@@ -250,12 +256,16 @@ export default function Home() {
               <div className="step">
                 <div className="step-num">02</div>
                 <h3>Build the scope</h3>
-                <p>Edit the useful structure: pages, work, timing, and limits.</p>
+                <p>
+                  Edit the useful structure: pages, work, timing, and limits.
+                </p>
               </div>
               <div className="step">
                 <div className="step-num">03</div>
                 <h3>Share & approve</h3>
-                <p>Send a snapshot. Feedback stays visible and approval locks it.</p>
+                <p>
+                  Send a snapshot. Feedback stays visible and approval locks it.
+                </p>
               </div>
             </div>
           </div>
@@ -285,10 +295,12 @@ export default function Home() {
           <div className="section-kicker">06 — Illustrative pricing</div>
           <div className="feature-head">
             <div>
-              <h2 className="section-title">Three ways to picture the product.</h2>
+              <h2 className="section-title">
+                Three ways to picture the product.
+              </h2>
               <p className="section-copy">
-                These are example bundles for the portfolio demo. Every card
-                opens the same free working demo; there is no checkout or paid
+                These are example bundles for the portfolio preview. Every card
+                opens the same free workspace; there is no checkout or paid
                 feature gate.
               </p>
             </div>
@@ -331,7 +343,7 @@ export default function Home() {
               into something clear.
             </h2>
             <Link className="button-primary" href="/workspace">
-              Try the free demo <ArrowUpRight size={13} />
+              Create a private workspace <ArrowUpRight size={13} />
             </Link>
           </div>
           <div aria-hidden="true" className="orbit-core" />

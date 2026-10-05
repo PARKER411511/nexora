@@ -36,7 +36,7 @@ test("mutating API rejects a foreign or missing browser origin", async () => {
       body,
     }),
   );
-  assert.equal(local.status, 200);
+  assert.equal(local.status, 503);
   const review = await reviewRoute(
     new Request("http://localhost:3002/api/review/unknown", {
       method: "POST",

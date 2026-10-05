@@ -7,7 +7,8 @@ import { PricingCards } from "@/components/PricingCards";
 
 export const metadata: Metadata = {
   title: "Illustrative pricing — Nexora",
-  description: "Explore Nexora's free browser demo and illustrative portfolio pricing examples.",
+  description:
+    "Explore Nexora's free private workspace and illustrative portfolio pricing examples.",
 };
 
 export default function PricingPage() {
@@ -17,16 +18,16 @@ export default function PricingPage() {
       <main>
         <section className="detail-hero pricing-hero" id="demo">
           <div className="section-kicker">Illustrative pricing</div>
-          <h1>Example plans. A free demo.</h1>
+          <h1>Example plans. A free workspace.</h1>
           <p>
-            Nexora is free to explore in this portfolio demo. The Solo and
+            Nexora is free to explore in this portfolio preview. The Solo and
             Studio prices below are visual examples, not a live subscription
             service. Every card opens the same complete workflow.
           </p>
           <div className="demo-callout">
             <strong>All demo features are free.</strong> Prices are examples;
             there is no billing, account creation, payment, or paid feature gate
-            connected to this demo.
+            connected to this preview.
           </div>
         </section>
 
@@ -46,15 +47,21 @@ export default function PricingPage() {
             </div>
             <div className="comparison-item">
               <Check size={16} />
-              <span>Deliverables, inclusions, exclusions, milestones, and revisions</span>
+              <span>
+                Deliverables, inclusions, exclusions, milestones, and revisions
+              </span>
             </div>
             <div className="comparison-item">
               <Check size={16} />
-              <span>Review snapshots, approval locking, and response history</span>
+              <span>
+                Review snapshots, approval locking, and response history
+              </span>
             </div>
             <div className="comparison-item">
               <Check size={16} />
-              <span>Change requests with explicit proposal and decision records</span>
+              <span>
+                Change requests with explicit proposal and decision records
+              </span>
             </div>
           </div>
         </section>
@@ -65,7 +72,7 @@ export default function PricingPage() {
             <h2>See the whole flow before deciding what it could become.</h2>
           </div>
           <Link className="button-primary" href="/workspace">
-            Try the free demo <ArrowUpRight size={13} />
+            Create a private workspace <ArrowUpRight size={13} />
           </Link>
         </section>
       </main>

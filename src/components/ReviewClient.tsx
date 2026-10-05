@@ -2,20 +2,12 @@
 
 import { Check, LoaderCircle, Printer, Send } from "lucide-react";
 import { useState } from "react";
-import {
-  demoCreateChangeRequest,
-  demoDecideChangeProposal,
-  demoReviewComment,
-  DemoStorageError,
-} from "@/lib/demo-store";
 import type { ReviewSnapshot } from "@/lib/types";
 
 export function ReviewClient({
   initial,
-  demoMode = false,
 }: {
   initial: ReviewSnapshot;
-  demoMode?: boolean;
 }) {
   const [review, setReview] = useState(initial);
   const [name, setName] = useState("");
@@ -33,32 +25,6 @@ export function ReviewClient({
     setMessage("");
     setLoading(true);
     try {
-      if (demoMode) {
-        let nextReview: ReviewSnapshot;
-        if (body.action === "change_request") {
-          nextReview = demoCreateChangeRequest(review.reviewToken!, {
-            requesterName: String(body.name ?? ""),
-            title: String(body.title ?? ""),
-            details: String(body.details ?? ""),
-          });
-        } else if (body.action === "proposal_decision") {
-          nextReview = demoDecideChangeProposal(review.reviewToken!, {
-            proposalId: String(body.proposalId ?? ""),
-            decision: body.decision as "accepted" | "declined",
-            name: String(body.name ?? ""),
-            comment: String(body.comment ?? ""),
-          });
-        } else {
-          nextReview = demoReviewComment(review.reviewToken!, {
-            name: String(body.name ?? ""),
-            comment: String(body.comment ?? ""),
-            action: body.action as "feedback" | "approval",
-          });
-        }
-        setReview(nextReview);
-        setMessage(successMessage);
-        return true;
-      }
       const response = await fetch(`/api/review/${review.reviewToken}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -71,7 +37,7 @@ export function ReviewClient({
       return true;
     } catch (e) {
       setError(
-        e instanceof DemoStorageError || e instanceof Error
+        e instanceof Error
           ? e.message
           : "Could not save response",
       );

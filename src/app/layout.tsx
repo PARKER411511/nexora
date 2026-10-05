@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Nexora — Clear scope. Smoother projects.",
-  description: "A free browser demo that turns web briefs into clear, reviewable scopes.",
+  description:
+    "A private account workspace that turns web briefs into clear, reviewable scopes.",
 };
 
 export default function RootLayout({
