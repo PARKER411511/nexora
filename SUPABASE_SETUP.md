@@ -12,13 +12,13 @@ The repository has no Docker, PostgreSQL, or Supabase CLI available in this envi
 
 ## 3. Configure Auth
 
-In Authentication → URL Configuration, set the Site URL to `http://127.0.0.1:3002` for local work and add these redirect URLs:
+In Authentication → URL Configuration, set the Site URL to the deployed origin `https://nexora-one-self.vercel.app` and add these redirect URLs:
 
 - `http://127.0.0.1:3002/auth/callback`
 - `http://localhost:3002/auth/callback`
-- `https://YOUR-DOMAIN/auth/callback`
+- `https://nexora-one-self.vercel.app/auth/callback`
 
-For Vercel, set the same publishable variables plus `NEXT_PUBLIC_SITE_URL` and `APP_ORIGIN` to the exact production origin (for example `https://nexora-one-self.vercel.app`), and add that origin’s `/auth/callback` to Supabase Auth. Do not trust a preview origin in production unless it is explicitly added.
+For Vercel, set the same publishable variables plus `APP_ORIGIN=https://nexora-one-self.vercel.app`. The app uses this exact origin for mutation checks; do not trust a preview origin in production unless it is explicitly added.
 
 Use the same callback path in the email confirmation and password recovery templates. The app validates `next` as a same-site path before redirecting.
 
