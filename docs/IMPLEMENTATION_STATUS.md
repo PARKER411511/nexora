@@ -4,6 +4,21 @@ This document tracks the completion suite in the repository. Hosted Supabase
 migrations, environment variables, external checks, and deployment remain
 owned by the release operator.
 
+## Hosted release: 7 October 2026
+
+The completion suite is deployed at https://nexora-one-self.vercel.app/.
+The three completion/operations migrations are applied. Production Vercel
+runs `npm run verify:deployment` on Node 24, and its deployment and GitHub
+gate passed after isolating test environment variables.
+
+The server credential and encryption key are configured locally and in Vercel
+only. GitHub holds the encrypted-download credential, with no Supabase or
+decryption key. Hourly review reminders, daily private snapshots, daily
+encrypted artifacts, and hourly uptime checks are active. Initial snapshot,
+uptime, and encrypted-artifact runs passed. The downloaded artifact's SHA-256,
+AES-GCM authentication, and 24-table schema were verified locally in memory.
+No plaintext account-data file was produced.
+
 ## Implemented in source
 
 - Personal and optional team workspaces with owner/admin/editor/viewer roles.
@@ -60,8 +75,8 @@ owned by the release operator.
 
 ## In progress / needs verification
 
-- Hosted Supabase activation and provider-side account deletion still require
-  the release operator. The local smoke suite exercises fresh/stale MFA,
+- Hosted configuration is active. Provider-side account deletion has not
+  been tested destructively against real accounts. The local smoke suite exercises fresh/stale MFA,
   serialized deletion claims, exact Storage ownership branches, nullable
   legacy metadata, and manifest orphan rejection; no hosted destructive test
   is run here.
@@ -98,16 +113,14 @@ owned by the release operator.
   APIs/RPCs/UI. Hosted admin persona verification remains.
 - **Operations:** predeployment GitHub gate and hourly health workflow are
   present. AES-256-GCM encryption, decryption, schema validation, and isolated
-  restore scripts pass locally. Daily artifact backup remains an operator
-  activation contract because external artifact egress and the narrow exporter
-  secret must be provisioned explicitly.
+  restore scripts pass locally. The daily ciphertext artifact workflow is active and its first run passed.
 - **Quality:** `npm test`, `npm run test:supabase`, `npm run test:backup`,
   `npm run typecheck`, and `npm run build` pass locally. `npm run
-  verify:deployment` is the final combined gate. Mobile, keyboard,
+  verify:deployment` passed locally, in GitHub, and in Vercel. Mobile, keyboard,
   screen-reader, performance, and hosted owner/client/ordinary/admin persona
   checks remain release verification tasks.
 
-## External activation required
+## Release configuration and remaining verification
 
 - Apply migrations in order:
   `20261005_private_workspace.sql`, `20261005_accounts_admin.sql`,
@@ -129,4 +142,5 @@ owned by the release operator.
 - Managed database backups, storage asset backups, isolated restore tests,
   and external uptime checks require the release operator's Supabase/Vercel/
   GitHub credentials and must be tested before claiming disaster recovery.
+
 
