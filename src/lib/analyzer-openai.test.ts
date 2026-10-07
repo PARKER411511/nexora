@@ -6,6 +6,29 @@ import { POST as analyzeRoute } from "../app/api/analyze/route";
 const brief =
   "A strength studio needs a responsive website with classes, booking, and a clear membership journey.";
 
+const cloudEnvironmentKeys = [
+  "APP_ORIGIN",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "SUPABASE_PUBLISHABLE_KEY",
+] as const;
+
+function useLocalCloudTestEnvironment() {
+  const previous = new Map(
+    cloudEnvironmentKeys.map((key) => [key, process.env[key]]),
+  );
+  process.env.APP_ORIGIN = "http://localhost:3002";
+  for (const key of cloudEnvironmentKeys.slice(1)) delete process.env[key];
+  return () => {
+    for (const key of cloudEnvironmentKeys) {
+      const value = previous.get(key);
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  };
+}
+
 test("OpenAI adapter parses the raw Responses REST output envelope", async () => {
   const previousKey = process.env.OPENAI_API_KEY;
   const previousFetch = globalThis.fetch;
@@ -52,6 +75,7 @@ test("OpenAI adapter parses the raw Responses REST output envelope", async () =>
 test("malformed or refused provider output is covered by the adapter while an unconfigured API fails closed", async () => {
   const previousKey = process.env.OPENAI_API_KEY;
   const previousFetch = globalThis.fetch;
+  const restoreCloudEnvironment = useLocalCloudTestEnvironment();
   process.env.OPENAI_API_KEY = "test-key";
   globalThis.fetch = async () =>
     new Response(
@@ -87,5 +111,6 @@ test("malformed or refused provider output is covered by the adapter while an un
     globalThis.fetch = previousFetch;
     if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = previousKey;
+    restoreCloudEnvironment();
   }
 });
