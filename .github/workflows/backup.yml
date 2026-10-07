@@ -1,0 +1,46 @@
+name: Nexora encrypted application backup
+
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEXORA_BACKUP_URL: ${{ secrets.NEXORA_BACKUP_URL }}
+      BACKUP_EXPORT_SECRET: ${{ secrets.BACKUP_EXPORT_SECRET }}
+    steps:
+      - name: Check required configuration
+        run: |
+          test -n "$NEXORA_BACKUP_URL"
+          test -n "$BACKUP_EXPORT_SECRET"
+      - name: Check application health
+        run: curl --fail --silent --show-error --max-time 20 "$NEXORA_BACKUP_URL/api/health" > health.json
+      - name: Download encrypted logical backup
+        run: |
+          umask 077
+          curl --fail --silent --show-error --max-time 120 \
+            -H "Authorization: Bearer $BACKUP_EXPORT_SECRET" \
+            "$NEXORA_BACKUP_URL/api/ops/backup?limit=5000" \
+            --output nexora-backup.nexora-backup
+          test -s nexora-backup.nexora-backup
+          test "$(head -c 14 nexora-backup.nexora-backup)" = "NEXORA-BACKUP$(printf '\002')"
+          if grep -a -q 'nexora-application-v2' nexora-backup.nexora-backup; then
+            echo "Backup response contained plaintext schema data" >&2
+            exit 1
+          fi
+          sha256sum nexora-backup.nexora-backup > nexora-backup.sha256
+      - name: Upload ciphertext-only artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nexora-encrypted-backup-${{ github.run_id }}
+          path: |
+            nexora-backup.nexora-backup
+            nexora-backup.sha256
+          retention-days: 30

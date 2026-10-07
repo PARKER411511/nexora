@@ -10,7 +10,7 @@ export default async function ProfilePage() {
   if (!hasSupabaseConfig()) return <CloudUnavailable />;
   try {
     const user = await requireServerUser();
-    return <ProfileForm email={user.email ?? ""} profile={await cloudGetProfile()} />;
+    return <ProfileForm email={user.email ?? ""} emailConfirmedAt={user.email_confirmed_at} profile={await cloudGetProfile()} />;
   } catch (error) {
     if (isCloudSetupError(error)) return <CloudUnavailable />;
     throw error;

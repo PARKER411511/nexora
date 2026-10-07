@@ -14,6 +14,8 @@ export function ReviewClient({
   const [comment, setComment] = useState("");
   const [requestTitle, setRequestTitle] = useState("");
   const [requestDetails, setRequestDetails] = useState("");
+  const [replyParent, setReplyParent] = useState<number | null>(null);
+  const [mentions, setMentions] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -75,6 +77,12 @@ export function ReviewClient({
       setRequestTitle("");
       setRequestDetails("");
     }
+  }
+
+  async function reply() {
+    if (!comment.trim()) { setError("Write a reply before sending it."); return; }
+    const saved = await post({ action: "reply", comment, parentId: replyParent, mentions: mentions.split(",").map((item) => item.trim()).filter(Boolean) }, "Reply added to the review thread.");
+    if (saved) { setComment(""); setMentions(""); setReplyParent(null); }
   }
 
   async function decideProposal(
@@ -341,11 +349,11 @@ export function ReviewClient({
         </p>
         <div className="review-actions-grid">
           <div className="field">
-            <label htmlFor="review-name">Your name</label>
+            <label htmlFor="review-name">Reviewer identity</label>
             <input
               id="review-name"
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Jamie"
+              placeholder="Your signed-in profile name"
               value={name}
             />
           </div>
@@ -358,6 +366,12 @@ export function ReviewClient({
               value={comment}
             />
           </div>
+        </div>
+        <p className="field-hint">The signed-in account is recorded as the reviewer. The display field is retained for compatibility and is not trusted for identity.</p>
+        {replyParent && <p className="reply-context" role="status">Replying to response #{replyParent} <button className="button-quiet" onClick={() => setReplyParent(null)} type="button">Cancel</button></p>}
+        <div className="field">
+          <label htmlFor="review-mentions">Mention teammates (confirmed email addresses, comma separated)</label>
+          <input id="review-mentions" onChange={(e) => setMentions(e.target.value)} placeholder="teammate@example.com" value={mentions} />
         </div>
         {error && <p className="form-error">{error}</p>}
         {message && <p className="form-success">{message}</p>}
@@ -375,6 +389,7 @@ export function ReviewClient({
             >
               <Send size={13} style={{ verticalAlign: "-2px" }} /> Send feedback
             </button>
+            <button className="button-secondary" disabled={loading} onClick={reply} type="button"><Send size={13} style={{ verticalAlign: "-2px" }} /> {replyParent ? "Reply" : "Add threaded note"}</button>
             {!locked && (
               <button
                 className="button-primary"
@@ -407,6 +422,7 @@ export function ReviewClient({
             </strong>
             <p>{item.comment}</p>
             <small>{new Date(item.createdAt).toLocaleString()}</small>
+            <button className="button-quiet" onClick={() => setReplyParent(item.id)} type="button">Reply in thread</button>
           </div>
         ))}
       </section>

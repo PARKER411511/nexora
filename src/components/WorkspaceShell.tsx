@@ -8,9 +8,11 @@ import {
   ShieldCheck,
   Sparkles,
   UserRound,
+  Users,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { SignOutButton } from "./SignOutButton";
+import { WorkspaceControls } from "./WorkspaceControls";
 
 export function WorkspaceShell({
   children,
@@ -26,6 +28,7 @@ export function WorkspaceShell({
     pathname.startsWith("/workspace/projects/");
   const isNewBrief = pathname === "/workspace/new";
   const isProfile = pathname === "/workspace/profile";
+  const isTeam = pathname.startsWith("/workspace/team");
   const isAdminPage = pathname.startsWith("/admin");
   return (
     <div className="workspace-shell">
@@ -37,6 +40,7 @@ export function WorkspaceShell({
           <span className="local-pill">
             PRIVATE WORKSPACE
           </span>
+          <WorkspaceControls />
           <SignOutButton />
           <Link className="button-primary" href="/workspace/new">
             New project <Plus size={13} style={{ verticalAlign: "-2px" }} />
@@ -74,6 +78,9 @@ export function WorkspaceShell({
             href="/workspace/profile"
           >
             <UserRound size={15} /> Profile
+          </Link>
+          <Link aria-current={isTeam ? "page" : undefined} className={`side-link ${isTeam ? "active" : ""}`} href="/workspace/team">
+            <Users size={15} /> Team & invites
           </Link>
           {isAdmin && (
             <Link

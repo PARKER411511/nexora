@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { getSupabaseConfig } from "./config";
 
 export class SupabaseUnavailableError extends Error {
@@ -31,6 +31,16 @@ export async function createSupabaseServerClient() {
         }
       },
     },
+  });
+}
+
+/** Server-only provider administration client. Never call this from a client component. */
+export function getSupabaseAdminClient(): SupabaseClient | null {
+  const config = getSupabaseConfig();
+  const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!config || !secret) return null;
+  return createClient(config.url, secret, {
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
 }
 

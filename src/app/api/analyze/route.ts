@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { analyzeBrief, analyzeWithOpenAI } from "@/lib/analyzer";
 import { sameOriginError } from "@/lib/origin";
 import { requireServerUser } from "@/lib/supabase/server";
+import { cloudAllowRequest } from "@/lib/supabase/repository";
 import { cloudErrorResponse } from "@/lib/supabase/api";
 
 export const runtime = "nodejs";
@@ -12,6 +13,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: originError }, { status: 403 });
   try {
     await requireServerUser();
+    if (!(await cloudAllowRequest("analyze")))
+      return NextResponse.json({ error: "Analysis is temporarily rate limited. Try again shortly." }, { status: 429 });
     const body = (await request.json()) as {
       brief?: unknown;
       preferOpenAI?: unknown;

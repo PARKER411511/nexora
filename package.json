@@ -8,7 +8,9 @@
     "start": "next start -H 127.0.0.1 -p 3002",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test src/lib/*.test.ts",
-    "test:supabase": "tsx scripts/supabase-smoke.ts"
+    "test:supabase": "tsx scripts/supabase-smoke.ts",
+    "test:backup": "node scripts/test-backup.mjs",
+    "verify:deployment": "npm test && npm run test:supabase && npm run test:backup && npm run build && npm run typecheck"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

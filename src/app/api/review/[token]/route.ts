@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sameOriginError } from "@/lib/origin";
 import { cloudErrorResponse } from "@/lib/supabase/api";
-import { cloudGetReview, cloudReviewAction } from "@/lib/supabase/repository";
+import { cloudGetReview, cloudReviewAction, cloudReviewReply } from "@/lib/supabase/repository";
 import { requireServerUser } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -35,7 +35,7 @@ export async function POST(
     await requireServerUser();
     const body = (await request.json()) as Record<string, unknown>;
     if (
-      !["approval", "feedback", "change_request", "proposal_decision"].includes(
+      !["approval", "feedback", "change_request", "proposal_decision", "reply"].includes(
         String(body.action),
       )
     )
@@ -43,9 +43,13 @@ export async function POST(
         { error: "Choose a valid review action." },
         { status: 400 },
       );
-    return NextResponse.json({
-      review: await cloudReviewAction((await params).token, body),
-    });
+    if (body.action === "reply") {
+      const comment = typeof body.comment === "string" ? body.comment : "";
+      const parentId = typeof body.parentId === "number" ? body.parentId : null;
+      const mentions = Array.isArray(body.mentions) ? body.mentions.filter((item): item is string => typeof item === "string").slice(0, 10) : [];
+      return NextResponse.json({ review: await cloudReviewReply((await params).token, comment, parentId, mentions) });
+    }
+    return NextResponse.json({ review: await cloudReviewAction((await params).token, body) });
   } catch (error) {
     return cloudErrorResponse(error, "Could not save review response");
   }

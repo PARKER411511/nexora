@@ -28,7 +28,7 @@ export function isValidBriefAnalysis(value: unknown): value is BriefAnalysis {
   );
 }
 
-function validateScope(value: unknown): value is Scope {
+export function validateScope(value: unknown): value is Scope {
   if (!value || typeof value !== "object") return false;
   const scope = value as Record<string, unknown>;
   const milestones = scope.milestones;
@@ -69,12 +69,26 @@ export function validateProjectInput(input: Record<string, unknown>) {
     throw new Error(
       "Your analysis and scope are malformed. Please analyze the brief again.",
     );
+  const tags = Array.isArray(input.tags)
+    ? input.tags.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean)
+    : [];
+  if (tags.length > 20 || tags.some((tag) => tag.length > 40))
+    throw new Error("Use up to 20 project tags, each under 40 characters.");
+  const deadline = input.deadline == null || input.deadline === "" ? null : stringValue(input.deadline);
+  if (deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline))
+    throw new Error("Use a valid deadline date.");
+  const workspaceId = input.workspaceId == null || input.workspaceId === "" ? undefined : stringValue(input.workspaceId);
+  if (workspaceId && !/^[0-9a-f-]{36}$/i.test(workspaceId))
+    throw new Error("Choose a valid workspace.");
   return {
     title,
     client,
     brief,
     analysis: input.analysis as BriefAnalysis,
     scope: input.scope as Scope,
+    tags,
+    deadline,
+    workspaceId,
   };
 }
 

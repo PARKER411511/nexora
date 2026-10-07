@@ -84,6 +84,9 @@ export function AuthForm({
   const [busy, setBusy] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
   const [canResend, setCanResend] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState("");
+  const [mfaChallengeId, setMfaChallengeId] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
   const safeNext = safeNextPath(next);
 
   function resetFeedback() {
@@ -116,6 +119,16 @@ export function AuthForm({
           password,
         });
         if (signInError) throw signInError;
+        const factors = await supabase.auth.mfa.listFactors();
+        const factor = factors.data?.totp?.find((item) => item.status === "verified");
+        if (factor) {
+          const challenge = await supabase.auth.mfa.challenge({ factorId: factor.id });
+          if (challenge.error || !challenge.data) throw challenge.error ?? new Error("Could not start MFA challenge.");
+          setMfaFactorId(factor.id);
+          setMfaChallengeId(challenge.data.id);
+          setMessage("Enter the code from your authenticator to finish signing in.");
+          return;
+        }
         window.location.assign(safeNext);
       } else if (mode === "signup") {
         const { data, error: signUpError } = await supabase.auth.signUp({
@@ -148,6 +161,22 @@ export function AuthForm({
         setPasswordConfirm("");
         setMessage("Password updated. You can continue to your workspace.");
       }
+    } catch (reason) {
+      setError(readableAuthError(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verifyMfa(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase || !mfaFactorId || !mfaChallengeId) return;
+    setBusy(true); setError("");
+    try {
+      const { error: verifyError } = await supabase.auth.mfa.verify({ factorId: mfaFactorId, challengeId: mfaChallengeId, code: mfaCode });
+      if (verifyError) throw verifyError;
+      window.location.assign(safeNext);
     } catch (reason) {
       setError(readableAuthError(reason));
     } finally {
@@ -273,6 +302,12 @@ export function AuthForm({
           </button>
         )}
       </form>
+      {mode === "signin" && mfaChallengeId && (
+        <form className="auth-form mfa-challenge" onSubmit={verifyMfa}>
+          <div className="field"><label htmlFor="mfa-code">Authenticator code</label><input autoComplete="one-time-code" id="mfa-code" inputMode="numeric" maxLength={6} onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, ""))} pattern="[0-9]{6}" required value={mfaCode} /></div>
+          <button className="button-primary auth-submit" disabled={busy} type="submit">{busy ? "Verifying…" : "Verify and continue"}</button>
+        </form>
+      )}
       <div className="auth-links">
         {mode === "signin" && (
           <>

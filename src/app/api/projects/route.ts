@@ -3,10 +3,7 @@ import { analyzeBrief, makeDefaultScope } from "@/lib/analyzer";
 import { isValidBriefAnalysis, validateProjectInput } from "@/lib/validation";
 import type { BriefAnalysis } from "@/lib/types";
 import { sameOriginError } from "@/lib/origin";
-import {
-  cloudCreateProject,
-  cloudListProjects,
-} from "@/lib/supabase/repository";
+import { cloudCreateProject, cloudListProjects } from "@/lib/supabase/repository";
 import { cloudErrorResponse } from "@/lib/supabase/api";
 import { requireServerUser } from "@/lib/supabase/server";
 

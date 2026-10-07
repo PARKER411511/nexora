@@ -1,4 +1,5 @@
 import type { AdminOverview } from "@/lib/types";
+import { AdminConsole } from "./AdminConsole";
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString(undefined, {
@@ -73,7 +74,7 @@ export function AdminDashboard({ overview }: { overview: AdminOverview }) {
                 <tbody>
                   {overview.projects.map((project) => (
                     <tr key={project.id}>
-                      <td><strong>{project.name}</strong><span>{project.id}</span></td>
+                      <td><strong><a className="text-link" href={`/admin/projects/${project.id}`}>{project.name}</a></strong><span>{project.id}</span></td>
                       <td><strong>{project.customer.name}</strong><span>{project.customer.email}</span></td>
                       <td><span className={`status status-${project.status}`}>{project.status.replaceAll("_", " ")}</span></td>
                       <td>{formatDate(project.updatedAt)}</td>
@@ -85,6 +86,7 @@ export function AdminDashboard({ overview }: { overview: AdminOverview }) {
           ) : <p className="admin-empty">No projects yet.</p>}
         </section>
       </div>
+      <AdminConsole initial={overview} />
     </div>
   );
 }

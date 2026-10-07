@@ -1,18 +1,38 @@
 import { NextResponse } from "next/server";
-import { cloudExportProject } from "@/lib/supabase/repository";
+import { cloudAllowRequest, cloudExportProject } from "@/lib/supabase/repository";
 import { cloudErrorResponse } from "@/lib/supabase/api";
 import { requireServerUser } from "@/lib/supabase/server";
+import { buildProjectPdf } from "@/lib/project-pdf";
 
 export const runtime = "nodejs";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await requireServerUser();
+    if (!(await cloudAllowRequest("export"))) return NextResponse.json({ error: "Export is temporarily rate limited. Try again shortly." }, { status: 429 });
     const { id } = await params;
     const { project, history } = await cloudExportProject(id);
+    const format = new URL(request.url).searchParams.get("format");
+    const filename = project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "nexora-project";
+    if (format === "json") {
+      return new NextResponse(JSON.stringify({ exportedAt: new Date().toISOString(), project, history }, null, 2), {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${filename}.json"`,
+        },
+      });
+    }
+    if (format === "pdf") {
+      return new NextResponse(buildProjectPdf(project, history) as unknown as BodyInit, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="${filename}.pdf"`,
+        },
+      });
+    }
     const responseLines = history.responses.length
       ? history.responses
           .map(
@@ -54,7 +74,7 @@ export async function GET(
     return new NextResponse(lines.join("\n"), {
       headers: {
         "Content-Type": "text/markdown; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.md"`,
+        "Content-Disposition": `attachment; filename="${filename}.md"`,
       },
     });
   } catch (error) {

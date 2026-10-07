@@ -8,6 +8,7 @@ import {
   buildWorkspaceOverview,
   type WorkspaceOverview,
 } from "@/lib/workspace-overview";
+import { WorkspaceOnboarding } from "./WorkspaceOnboarding";
 
 const labels: Record<Project["status"], string> = {
   draft: "Draft",
@@ -31,6 +32,7 @@ function Dashboard({
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
   return (
     <>
+      <WorkspaceOnboarding />
       <div aria-label="Project status summary" className="overview-stats">
         {[
           [
@@ -179,18 +181,24 @@ export function WorkspaceHome({
 }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [sort, setSort] = useState<"updated" | "created" | "name">("updated");
+  const [showArchived, setShowArchived] = useState(false);
   const overview = initialOverview ?? buildWorkspaceOverview(projects);
-  const visible = useMemo(
-    () =>
-      projects.filter(
+  const visible = useMemo(() => {
+    const filtered = projects.filter(
         (p) =>
           `${p.title} ${p.client}`
             .toLowerCase()
             .includes(search.toLowerCase()) &&
-          (status === "all" || p.status === status),
-      ),
-    [projects, search, status],
-  );
+          (status === "all" || p.status === status) &&
+          (showArchived || p.archived !== true),
+      );
+    return filtered.toSorted((a, b) => sort === "name"
+      ? a.title.localeCompare(b.title)
+      : sort === "created"
+        ? b.createdAt.localeCompare(a.createdAt)
+        : b.updatedAt.localeCompare(a.updatedAt));
+  }, [projects, search, status, showArchived, sort]);
   const library = view === "projects";
   return (
     <div className="workspace-main">
@@ -235,6 +243,12 @@ export function WorkspaceHome({
               <option value="changes_requested">Changes requested</option>
               <option value="approved">Approved</option>
             </select>
+            <select aria-label="Sort projects" className="search-bar" onChange={(e) => setSort(e.target.value as typeof sort)} value={sort}>
+              <option value="updated">Recently updated</option>
+              <option value="created">Recently created</option>
+              <option value="name">Name</option>
+            </select>
+            <label className="project-archive-toggle"><input checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} type="checkbox" /> Show archived</label>
           </div>
           {visible.length ? (
             <div className="project-grid">
@@ -247,7 +261,7 @@ export function WorkspaceHome({
                   <div className="project-card-top">
                     <div>
                       <span className="mono-label">
-                        {project.status === "draft"
+                        {project.archived ? "Archived project" : project.status === "draft"
                           ? "Active project"
                           : "Review state"}
                       </span>

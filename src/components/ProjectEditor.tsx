@@ -3,9 +3,12 @@
 import Link from "next/link";
 import {
   ArrowLeft,
+  Archive,
   Check,
+  Copy,
   Download,
   ExternalLink,
+  GitCompare,
   LoaderCircle,
   Plus,
   RefreshCw,
@@ -19,7 +22,9 @@ import type {
   Project,
   ProjectHistory,
   Scope,
+  BriefTemplate,
 } from "@/lib/types";
+import { ReviewSharingPanel } from "./ReviewSharingPanel";
 
 function EditableList({
   label,
@@ -79,14 +84,18 @@ export function ProjectEditor({
   initialTab,
 }: {
   project: Project;
-  initialTab?: "scope" | "analysis" | "changes";
+  initialTab?: "scope" | "analysis" | "changes" | "versions";
 }) {
   const [project, setProject] = useState(initial);
-  const [tab, setTab] = useState<"scope" | "analysis" | "changes">(
+  const [tab, setTab] = useState<"scope" | "analysis" | "changes" | "versions">(
     initialTab ?? "scope",
   );
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [scopeTemplateName, setScopeTemplateName] = useState("");
+  const [scopeTemplateMessage, setScopeTemplateMessage] = useState("");
+  const [scopeTemplates, setScopeTemplates] = useState<BriefTemplate[]>([]);
+  const [scopeTemplatesLoading, setScopeTemplatesLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState(
@@ -97,12 +106,36 @@ export function ProjectEditor({
   const [dirty, setDirty] = useState(false);
   const dirtyRef = useRef(false);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
+  const [versions, setVersions] = useState<Array<{ version: number; createdAt: string; project: Project }>>([]);
+  const [compare, setCompare] = useState<{ left: number; right: number; changedFields: Array<{ field: string; left: unknown; right: unknown }> } | null>(null);
   const locked = project.status === "approved";
-  const editingDisabled = locked || saving || sharing || historyLoading;
+  const editingDisabled = locked || project.archived === true || saving || sharing || historyLoading || lifecycleBusy;
 
   useEffect(() => {
     if (initialTab) setTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (!project.workspaceId) {
+      setScopeTemplates([]);
+      return;
+    }
+    const controller = new AbortController();
+    setScopeTemplatesLoading(true);
+    fetch(`/api/templates?workspaceId=${encodeURIComponent(project.workspaceId)}`, { signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load scope templates.");
+        setScopeTemplates((data.templates ?? []) as BriefTemplate[]);
+      })
+      .catch((reason: unknown) => {
+        if (reason instanceof DOMException && reason.name === "AbortError") return;
+        setScopeTemplateMessage(reason instanceof Error ? reason.message : "Could not load scope templates.");
+      })
+      .finally(() => setScopeTemplatesLoading(false));
+    return () => controller.abort();
+  }, [project.workspaceId]);
 
   function setDirtyState(value: boolean) {
     dirtyRef.current = value;
@@ -150,7 +183,30 @@ export function ProjectEditor({
 
   useEffect(() => {
     if (tab === "changes") void refreshHistory();
+    if (tab === "versions") void loadVersions();
   }, [project.id, tab, dirty]);
+
+  async function loadVersions() {
+    try {
+      const response = await fetch(`/api/projects/${project.id}/versions`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setVersions(data.versions ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load versions");
+    }
+  }
+
+  async function compareVersions(left: number, right: number) {
+    try {
+      const response = await fetch(`/api/projects/${project.id}/versions?left=${left}&right=${right}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setCompare(data.comparison);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not compare versions");
+    }
+  }
 
   function setScope(update: Partial<Scope>) {
     setDirtyState(true);
@@ -169,6 +225,46 @@ export function ProjectEditor({
   function updateProject(update: Partial<Project>) {
     setDirtyState(true);
     setProject((current) => ({ ...current, ...update }));
+  }
+
+  async function saveScopeTemplate() {
+    if (!project.workspaceId || !scopeTemplateName.trim()) return;
+    setScopeTemplateMessage("");
+    try {
+      const response = await fetch("/api/templates", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: project.workspaceId,
+          name: scopeTemplateName.trim(),
+          brief: project.brief,
+          scope: project.scope,
+          tags: project.tags ?? [],
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not save scope template.");
+      if (data.template) setScopeTemplates((items) => [data.template as BriefTemplate, ...items]);
+      setScopeTemplateName("");
+      setScopeTemplateMessage("Scope template saved.");
+    } catch (reason) {
+      setScopeTemplateMessage(reason instanceof Error ? reason.message : "Could not save scope template.");
+    }
+  }
+
+  function applyScopeTemplate(templateId: string) {
+    const template = scopeTemplates.find((item) => item.id === templateId);
+    if (!template || !template.scope) return;
+    setProject((current) => ({
+      ...current,
+      brief: template.brief,
+      scope: template.scope as Scope,
+      tags: template.tags ?? [],
+    }));
+    setDirtyState(true);
+    setScopeTemplateMessage(`Loaded “${template.name}”. Save project to apply it.`);
+    setError("");
+    setMessage("");
   }
   function discardLocalEdits() {
     if (!pendingProject) return;
@@ -265,6 +361,41 @@ export function ProjectEditor({
     }
   }
 
+  async function lifecycle(action: "archive" | "restore" | "duplicate" | "delete") {
+    if (action === "delete" && !window.confirm("Delete this project permanently? This removes its snapshots, comments, versions, and attachment metadata and cannot be undone.")) return;
+    if (action === "archive" && !window.confirm("Archive this project? Active review links will be revoked until you restore it.")) return;
+    setError("");
+    setMessage("");
+    setLifecycleBusy(true);
+    try {
+      const body: Record<string, unknown> = { action };
+      if (action === "delete") body.confirmation = "DELETE";
+      const response = await fetch(`/api/projects/${project.id}/lifecycle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      if (action === "delete") {
+        window.location.assign("/workspace/projects");
+        return;
+      }
+      if (action === "duplicate") {
+        window.location.assign(`/workspace/projects/${data.project.id}`);
+        return;
+      }
+      setProject(data.project);
+      setDirtyState(false);
+      setShareUrl(data.project.reviewToken ? `/review/${data.project.reviewToken}` : "");
+      setMessage(action === "archive" ? "Project archived and active review access revoked." : "Project restored. Editing is available again.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not update project");
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
+
   return (
     <div className="editor-wrap">
       <Link className="back-link" href="/workspace">
@@ -273,7 +404,7 @@ export function ProjectEditor({
       </Link>
       <div className="editor-header">
         <div>
-          <div className="section-kicker">Project / {project.status}</div>
+          <div className="section-kicker">Project / {project.archived ? "archived" : project.status}</div>
           <input
             aria-label="Project title"
             disabled={editingDisabled}
@@ -299,6 +430,14 @@ export function ProjectEditor({
         </div>
         <div className="editor-actions">
           <a className="button-secondary" href={`/api/projects/${project.id}/export`}><Download size={13} style={{ verticalAlign: "-2px" }} /> Export markdown</a>
+          <a className="button-secondary" href={`/api/projects/${project.id}/export?format=json`}>JSON</a>
+          {project.archived ? (
+            <button className="button-secondary" disabled={lifecycleBusy} onClick={() => lifecycle("restore")} type="button"><Archive size={13} /> Restore</button>
+          ) : (
+            <button className="button-secondary" disabled={lifecycleBusy} onClick={() => lifecycle("archive")} type="button"><Archive size={13} /> Archive</button>
+          )}
+          <button className="button-secondary" disabled={lifecycleBusy} onClick={() => lifecycle("duplicate")} type="button"><Copy size={13} /> Duplicate</button>
+          <button className="button-danger" disabled={lifecycleBusy} onClick={() => lifecycle("delete")} type="button">Delete</button>
           {project.reviewToken && (
             <Link
               className="button-secondary"
@@ -319,6 +458,11 @@ export function ProjectEditor({
             : "this review"}
           . Scope fields are locked. New notes belong in a separate change
           request.
+        </div>
+      )}
+      {project.archived && (
+        <div className="locked-note" style={{ marginBottom: 20 }}>
+          <Archive size={14} style={{ verticalAlign: "-2px" }} /> This project is archived. Restore it to edit or create a new review snapshot.
         </div>
       )}
       {pendingProject && dirty && (
@@ -370,6 +514,13 @@ export function ProjectEditor({
         >
           Responses & changes
         </button>
+        <button
+          className={`editor-tab ${tab === "versions" ? "active" : ""}`}
+          onClick={() => setTab("versions")}
+          type="button"
+        >
+          <GitCompare size={13} /> Versions
+        </button>
       </div>
       {tab === "scope" ? (
         <div className="editor-columns">
@@ -382,6 +533,27 @@ export function ProjectEditor({
                 id="client-name"
                 onChange={(e) => updateProject({ client: e.target.value })}
                 value={project.client}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="project-tags">Tags</label>
+              <input
+                disabled={editingDisabled}
+                id="project-tags"
+                onChange={(e) => updateProject({ tags: e.target.value.split(",").map((tag) => tag.trim()).filter(Boolean) })}
+                placeholder="e.g. website, Q4, priority"
+                value={(project.tags ?? []).join(", ")}
+              />
+              <small className="field-help">Separate tags with commas. Up to 20 tags.</small>
+            </div>
+            <div className="field">
+              <label htmlFor="project-deadline">Deadline</label>
+              <input
+                disabled={editingDisabled}
+                id="project-deadline"
+                onChange={(e) => updateProject({ deadline: e.target.value || null })}
+                type="date"
+                value={project.deadline ?? ""}
               />
             </div>
             <div className="field">
@@ -425,6 +597,44 @@ export function ProjectEditor({
                 value={project.scope.revisions}
               />
             </div>
+            {project.workspaceId && (
+              <div className="field">
+                <label htmlFor="scope-template-name">Reusable scope template</label>
+                <select
+                  aria-label="Apply saved scope template"
+                  disabled={editingDisabled || scopeTemplatesLoading || scopeTemplates.length === 0}
+                  defaultValue=""
+                  onChange={(event) => applyScopeTemplate(event.target.value)}
+                >
+                  <option value="">{scopeTemplatesLoading ? "Loading templates…" : scopeTemplates.length ? "Apply a saved scope" : "No saved scope templates"}</option>
+                  {scopeTemplates.filter((template) => template.scope).map((template) => (
+                    <option key={template.id} value={template.id}>{template.name}</option>
+                  ))}
+                </select>
+                <div className="template-save-row">
+                  <input
+                    aria-label="Scope template name"
+                    disabled={editingDisabled}
+                    id="scope-template-name"
+                    onChange={(event) => setScopeTemplateName(event.target.value)}
+                    placeholder="e.g. Marketing site scope"
+                    value={scopeTemplateName}
+                  />
+                  <button
+                    className="button-quiet"
+                    disabled={editingDisabled || !scopeTemplateName.trim() || project.brief.length < 24}
+                    onClick={() => void saveScopeTemplate()}
+                    type="button"
+                  >
+                    Save template
+                  </button>
+                </div>
+                <small className="field-help">Workspace editors can save templates. Applying one updates this draft; save the project to persist the scope.</small>
+                <small className={scopeTemplateMessage.includes("saved") ? "form-success" : "form-error"} role="status">
+                  {scopeTemplateMessage}
+                </small>
+              </div>
+            )}
           </section>
           <section className="card">
             <h2>Milestones</h2>
@@ -577,6 +787,8 @@ export function ProjectEditor({
           disabled={editingDisabled}
           onChange={setAnalysis}
         />
+      ) : tab === "versions" ? (
+        <VersionPanel compare={compare} onCompare={compareVersions} versions={versions} />
       ) : (
         <ChangeManagementPanel
           history={history}
@@ -586,7 +798,7 @@ export function ProjectEditor({
           project={project}
         />
       )}
-      {tab !== "changes" && (
+      {tab !== "changes" && tab !== "versions" && (
         <>
           <div className="editor-bottom">
             <span style={{ color: "#777", fontSize: 13 }}>
@@ -641,6 +853,7 @@ export function ProjectEditor({
               </button>
             </div>
           )}
+          <ReviewSharingPanel projectId={project.id} reviewToken={project.reviewToken} />
         </>
       )}
       {error && (
@@ -655,6 +868,48 @@ export function ProjectEditor({
       )}
     </div>
   );
+}
+
+function VersionPanel({
+  versions,
+  compare,
+  onCompare,
+}: {
+  versions: Array<{ version: number; createdAt: string; project: Project }>;
+  compare: { left: number; right: number; changedFields: Array<{ field: string; left: unknown; right: unknown }> } | null;
+  onCompare: (left: number, right: number) => void;
+}) {
+  const [left, setLeft] = useState(versions[1]?.version ?? versions[0]?.version ?? 1);
+  const [right, setRight] = useState(versions[0]?.version ?? 1);
+  useEffect(() => {
+    if (versions.length > 1) {
+      setLeft(versions[1].version);
+      setRight(versions[0].version);
+    }
+  }, [versions]);
+  return (
+    <section className="card version-panel">
+      <div className="section-kicker">Immutable project history</div>
+      <h2>Compare saved versions</h2>
+      <p className="muted-copy">Every meaningful save is retained. Select two stored versions to see changed fields, deliverables, and milestones side by side.</p>
+      {versions.length < 2 ? <p className="empty-history">Save a change to create a second version.</p> : (
+        <>
+          <div className="version-selectors">
+            <label>Earlier version<select value={left} onChange={(e) => setLeft(Number(e.target.value))}>{versions.map((version) => <option key={version.version} value={version.version}>v{version.version} · {new Date(version.createdAt).toLocaleString()}</option>)}</select></label>
+            <label>Later version<select value={right} onChange={(e) => setRight(Number(e.target.value))}>{versions.map((version) => <option key={version.version} value={version.version}>v{version.version} · {new Date(version.createdAt).toLocaleString()}</option>)}</select></label>
+            <button className="button-primary" disabled={left === right} onClick={() => onCompare(left, right)} type="button"><GitCompare size={14} /> Compare</button>
+          </div>
+          {compare && <div className="version-diff" role="status"><strong>v{compare.left} → v{compare.right}</strong>{compare.changedFields.length ? <div>{compare.changedFields.map((item) => <div className="version-diff-row" key={item.field}><span>{item.field}</span><code>{formatDiffValue(item.left)}</code><code>{formatDiffValue(item.right)}</code></div>)}</div> : <p>No changed fields.</p>}</div>}
+        </>
+      )}
+      {versions.length > 0 && <div className="version-list">{versions.map((version) => <div key={version.version}><strong>v{version.version}</strong><span>{new Date(version.createdAt).toLocaleString()}</span><small>{version.project.title} · {version.project.scope.deliverables.length} deliverables</small></div>)}</div>}
+    </section>
+  );
+}
+
+function formatDiffValue(value: unknown) {
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return text && text.length > 180 ? `${text.slice(0, 180)}…` : text ?? "—";
 }
 
 function AnalysisPanel({
