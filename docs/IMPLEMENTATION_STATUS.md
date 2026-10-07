@@ -144,3 +144,24 @@ No plaintext account-data file was produced.
   GitHub credentials and must be tested before claiming disaster recovery.
 
 
+
+## Account design and workspace UI follow-up
+
+- Sign-in, sign-up, recovery, reset, and MFA share a responsive Nexora auth
+  composition with red artwork, clearer form hierarchy, focus states, and
+  accessible feedback. Authentication behavior remains unchanged.
+- The project editor exposes PDF export, private attachments, and review
+  comments, replies, and authorized mentions. Profile settings expose account
+  data export and a private support request form.
+- Workspace selection is synchronized across the header, project library,
+  overview, and new brief. Stored history summaries stay scoped to the selected
+  workspace. First-user personal-workspace conflicts receive one bounded retry
+  in both bootstrap and project creation.
+- The deployment gate passes with 35 tests, migration smoke, logical backup and
+  restore checks, TypeScript, and a production build. Independent review found no
+  material blockers in the new attachment access or workspace concurrency paths.
+- Hosted ordinary-account creation, saving after reload, navigation, and review
+  snapshot creation passed before the browser test runtime became unavailable.
+  Fresh auth screenshots, mobile/keyboard checks of this follow-up, and hosted
+  admin/client persona checks remain unverified. No account credentials, grants,
+  or existing user projects were changed during these checks.

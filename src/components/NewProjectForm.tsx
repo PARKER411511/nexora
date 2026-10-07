@@ -43,9 +43,17 @@ export function NewProjectForm() {
       if (!active) return;
       const next = (data.workspaces ?? []) as Workspace[];
       setWorkspaces(next);
-      setWorkspaceId(next.find((item) => !item.personal)?.id ?? next[0]?.id ?? "");
-    }).catch(() => { if (active) setWorkspaces([]); });
-    return () => { active = false; };
+      const stored = window.localStorage.getItem("nexora.workspaceId");
+      const initial = next.find((item) => item.id === stored)?.id ?? next[0]?.id ?? "";
+      setWorkspaceId(initial);
+      if (initial) window.localStorage.setItem("nexora.workspaceId", initial);
+    }).catch(() => { if (active) setError("Workspaces are still loading. Retry before creating the project."); });
+    const onWorkspaceChange = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (id) setWorkspaceId(id);
+    };
+    window.addEventListener("nexora-workspace-changed", onWorkspaceChange);
+    return () => { active = false; window.removeEventListener("nexora-workspace-changed", onWorkspaceChange); };
   }, []);
   useEffect(() => {
     if (!workspaceId) { setTemplates([]); return; }
@@ -145,7 +153,7 @@ export function NewProjectForm() {
           </div>
           <div className="field">
             <label htmlFor="project-workspace">Workspace</label>
-            <select id="project-workspace" onChange={(e) => setWorkspaceId(e.target.value)} value={workspaceId}>
+            <select id="project-workspace" onChange={(e) => { setWorkspaceId(e.target.value); window.localStorage.setItem("nexora.workspaceId", e.target.value); window.dispatchEvent(new CustomEvent("nexora-workspace-changed", { detail: { id: e.target.value } })); }} value={workspaceId}>
               {workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}{workspace.personal ? " (personal)" : ""}</option>)}
             </select>
             <small className="field-help">Team projects inherit the workspace member roles.</small>

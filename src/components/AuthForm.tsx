@@ -224,13 +224,22 @@ export function AuthForm({
           ? "Send reset link"
           : "Update password";
 
+  const intro =
+    mode === "signin"
+      ? "Pick up where you left off. Your briefs and review decisions are waiting."
+      : mode === "signup"
+        ? "Create one private home for the context behind your best work."
+        : mode === "forgot"
+          ? "Enter your account email and we’ll send a fresh recovery link if it matches a Nexora account."
+          : "Choose a strong password to secure your Nexora workspace."
+
   return (
     <div className="auth-card">
-      <div className="section-kicker">Nexora / private workspace</div>
-      <h1>{title}</h1>
-      <p className="auth-intro">
-        Your briefs, review snapshots, and decisions belong to your account.
-      </p>
+      <div className="auth-card-header">
+        <div className="section-kicker">Nexora / private workspace</div>
+        <h1>{title}</h1>
+        <p className="auth-intro">{intro}</p>
+      </div>
       <form className="auth-form" onSubmit={submit}>
         {mode === "signup" && (
           <label className="field" htmlFor="full-name">
@@ -268,6 +277,9 @@ export function AuthForm({
             value={password}
           />
         )}
+        {mode === "signup" && (
+          <p className="field-hint auth-password-hint">Use at least 8 characters. A passphrase is easiest to remember.</p>
+        )}
         {(mode === "signup" || mode === "reset") && (
           <PasswordField
             autoComplete="new-password"
@@ -279,12 +291,12 @@ export function AuthForm({
           />
         )}
         {error && (
-          <p className="form-error" role="alert">
+          <p className="form-error auth-feedback" role="alert">
             {error}
           </p>
         )}
         {message && (
-          <p className="form-success" role="status">
+          <p className="form-success auth-feedback" role="status">
             {message}
           </p>
         )}

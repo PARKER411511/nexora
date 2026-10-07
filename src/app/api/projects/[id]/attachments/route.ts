@@ -4,6 +4,8 @@ import { cloudErrorResponse } from "@/lib/supabase/api";
 import { createSupabaseServerClient, requireServerUser } from "@/lib/supabase/server";
 import {
   cloudFinalizeAttachmentDelete,
+  cloudGetAttachment,
+  cloudListAttachments,
   cloudRegisterAttachment,
   cloudRequestAttachmentDelete,
 } from "@/lib/supabase/repository";
@@ -14,6 +16,26 @@ const allowed = new Set([
   "image/jpeg", "image/png", "image/webp", "application/pdf",
   "text/plain", "text/markdown", "application/zip",
 ]);
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    await requireServerUser();
+    const projectId = (await params).id;
+    const attachmentId = new URL(request.url).searchParams.get("attachmentId");
+    const supabase = await createSupabaseServerClient();
+    if (!attachmentId) return NextResponse.json({ attachments: await cloudListAttachments(projectId) });
+    const attachment = await cloudGetAttachment(projectId, attachmentId);
+    if (!attachment || attachment.pendingDelete) return NextResponse.json({ error: "Attachment not found." }, { status: 404 });
+    const signed = await supabase.storage.from("nexora-private").createSignedUrl(attachment.objectKey, 60, { download: attachment.originalName });
+    if (signed.error || !signed.data?.signedUrl) throw signed.error ?? new Error("Could not create a download link.");
+    return NextResponse.json({ attachment, downloadUrl: signed.data.signedUrl });
+  } catch (error) {
+    return cloudErrorResponse(error, "Could not load attachment");
+  }
+}
 
 export async function POST(
   request: Request,

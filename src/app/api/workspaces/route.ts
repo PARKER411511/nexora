@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sameOriginError } from "@/lib/origin";
-import { cloudCreateWorkspace, cloudListWorkspaces } from "@/lib/supabase/repository";
+import { cloudCreateWorkspace, cloudEnsurePersonalWorkspace, cloudListWorkspaces } from "@/lib/supabase/repository";
 import { cloudErrorResponse } from "@/lib/supabase/api";
 import { requireServerUser } from "@/lib/supabase/server";
 
@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     await requireServerUser();
+    await cloudEnsurePersonalWorkspace();
     return NextResponse.json({ workspaces: await cloudListWorkspaces() });
   } catch (error) {
     return cloudErrorResponse(error, "Could not load workspaces");

@@ -177,12 +177,50 @@ export function ProfileForm({ profile, email, emailConfirmedAt }: { profile: Acc
           {avatarKey && <button className="button-secondary" disabled={avatarBusy} onClick={removeAvatar} type="button">Remove photo</button>}
           {avatarMessage && <small className="form-success" role="status">{avatarMessage}</small>}
           {avatarError && <small className="form-error" role="alert">{avatarError}</small>}
+          <AccountDataAndSupport />
           <SecurityControls email={email} />
           <DeleteAccount />
         </aside>
       </div>
     </div>
   );
+}
+
+function AccountDataAndSupport() {
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!subject.trim() || !body.trim()) { setError("Add a subject and message."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const response = await fetch("/api/support", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ subject, body }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not send support request.");
+      setSubject(""); setBody(""); setMessage("Request saved to the support queue.");
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not send support request."); }
+    finally { setBusy(false); }
+  }
+  return <div className="security-inline account-data-support">
+    <div className="security-divider" />
+    <div className="section-kicker">Account data & support</div>
+    <h3>Take your data with you</h3>
+    <p className="profile-muted">Download a JSON copy of your profile and saved project history whenever you need it.</p>
+    <a className="button-secondary" download href="/api/account/export">Download account data</a>
+    <div className="security-divider" />
+    <h3>Contact support</h3>
+    <p className="profile-muted">Send a private request to the Nexora support queue. No email is sent automatically.</p>
+    <form className="security-form" onSubmit={submit}>
+      <input aria-label="Support subject" maxLength={160} onChange={(event) => setSubject(event.target.value)} placeholder="Subject" value={subject} />
+      <textarea aria-label="Support message" maxLength={4000} onChange={(event) => setBody(event.target.value)} placeholder="How can we help?" value={body} />
+      <button className="button-secondary" disabled={busy} type="submit">{busy ? "Sending…" : "Send support request"}</button>
+    </form>
+    {message && <small className="form-success" role="status">{message}</small>}
+    {error && <small className="form-error" role="alert">{error}</small>}
+  </div>;
 }
 
 function VerificationResend({ email }: { email: string }) {

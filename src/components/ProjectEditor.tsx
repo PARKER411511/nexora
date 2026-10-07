@@ -25,6 +25,7 @@ import type {
   BriefTemplate,
 } from "@/lib/types";
 import { ReviewSharingPanel } from "./ReviewSharingPanel";
+import { ProjectAttachmentsPanel, ProjectCommentsPanel } from "./ProjectCollaborationPanels";
 
 function EditableList({
   label,
@@ -108,6 +109,7 @@ export function ProjectEditor({
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [versions, setVersions] = useState<Array<{ version: number; createdAt: string; project: Project }>>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
   const [compare, setCompare] = useState<{ left: number; right: number; changedFields: Array<{ field: string; left: unknown; right: unknown }> } | null>(null);
   const locked = project.status === "approved";
   const editingDisabled = locked || project.archived === true || saving || sharing || historyLoading || lifecycleBusy;
@@ -187,6 +189,7 @@ export function ProjectEditor({
   }, [project.id, tab, dirty]);
 
   async function loadVersions() {
+    setVersionsLoading(true);
     try {
       const response = await fetch(`/api/projects/${project.id}/versions`);
       const data = await response.json();
@@ -194,6 +197,8 @@ export function ProjectEditor({
       setVersions(data.versions ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load versions");
+    } finally {
+      setVersionsLoading(false);
     }
   }
 
@@ -301,6 +306,7 @@ export function ProjectEditor({
           ? "Scope saved. The existing review snapshot is still current."
           : "Scope saved locally. Share a fresh snapshot when ready.",
       );
+      void loadVersions();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save scope");
     } finally {
@@ -337,6 +343,7 @@ export function ProjectEditor({
       setProject(shared.project);
       setShareUrl(shared.url);
       setMessage("Scope saved and snapshot ready to review.");
+      void loadVersions();
     } catch (e) {
       setError(
         e instanceof Error
@@ -430,6 +437,7 @@ export function ProjectEditor({
         </div>
         <div className="editor-actions">
           <a className="button-secondary" href={`/api/projects/${project.id}/export`}><Download size={13} style={{ verticalAlign: "-2px" }} /> Export markdown</a>
+          <a className="button-secondary" href={`/api/projects/${project.id}/export?format=pdf`}><Download size={13} style={{ verticalAlign: "-2px" }} /> PDF</a>
           <a className="button-secondary" href={`/api/projects/${project.id}/export?format=json`}>JSON</a>
           {project.archived ? (
             <button className="button-secondary" disabled={lifecycleBusy} onClick={() => lifecycle("restore")} type="button"><Archive size={13} /> Restore</button>
@@ -788,7 +796,7 @@ export function ProjectEditor({
           onChange={setAnalysis}
         />
       ) : tab === "versions" ? (
-        <VersionPanel compare={compare} onCompare={compareVersions} versions={versions} />
+        <VersionPanel compare={compare} loading={versionsLoading} onCompare={compareVersions} onRefresh={loadVersions} versions={versions} />
       ) : (
         <ChangeManagementPanel
           history={history}
@@ -854,6 +862,8 @@ export function ProjectEditor({
             </div>
           )}
           <ReviewSharingPanel projectId={project.id} reviewToken={project.reviewToken} />
+          <ProjectAttachmentsPanel projectId={project.id} />
+          <ProjectCommentsPanel reviewToken={project.reviewToken} />
         </>
       )}
       {error && (
@@ -874,10 +884,14 @@ function VersionPanel({
   versions,
   compare,
   onCompare,
+  onRefresh,
+  loading,
 }: {
   versions: Array<{ version: number; createdAt: string; project: Project }>;
   compare: { left: number; right: number; changedFields: Array<{ field: string; left: unknown; right: unknown }> } | null;
   onCompare: (left: number, right: number) => void;
+  onRefresh: () => void;
+  loading: boolean;
 }) {
   const [left, setLeft] = useState(versions[1]?.version ?? versions[0]?.version ?? 1);
   const [right, setRight] = useState(versions[0]?.version ?? 1);
@@ -891,8 +905,8 @@ function VersionPanel({
     <section className="card version-panel">
       <div className="section-kicker">Immutable project history</div>
       <h2>Compare saved versions</h2>
-      <p className="muted-copy">Every meaningful save is retained. Select two stored versions to see changed fields, deliverables, and milestones side by side.</p>
-      {versions.length < 2 ? <p className="empty-history">Save a change to create a second version.</p> : (
+      <div className="version-panel-toolbar"><p className="muted-copy">Every meaningful save is retained. Select two stored versions to see changed fields, deliverables, and milestones side by side.</p><button aria-label="Refresh saved versions" className="icon-button" disabled={loading} onClick={() => void onRefresh()} type="button"><RefreshCw size={14} /></button></div>
+      {loading && !versions.length ? <p className="empty-history">Loading saved versions…</p> : versions.length < 2 ? <p className="empty-history">Save a change to create a second version.</p> : (
         <>
           <div className="version-selectors">
             <label>Earlier version<select value={left} onChange={(e) => setLeft(Number(e.target.value))}>{versions.map((version) => <option key={version.version} value={version.version}>v{version.version} · {new Date(version.createdAt).toLocaleString()}</option>)}</select></label>

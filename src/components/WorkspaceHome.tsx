@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { ArrowUpRight, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Project } from "@/lib/types";
+import { useEffect } from "react";
+import type { Project, ProjectHistory, Workspace } from "@/lib/types";
 import {
   buildWorkspaceOverview,
   type WorkspaceOverview,
@@ -173,19 +174,54 @@ function Dashboard({
 export function WorkspaceHome({
   projects,
   overview: initialOverview,
+  histories,
   view = "overview",
 }: {
   projects: Project[];
   overview?: WorkspaceOverview;
+  histories?: Record<string, ProjectHistory>;
   view?: "overview" | "projects";
 }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [sort, setSort] = useState<"updated" | "created" | "name">("updated");
   const [showArchived, setShowArchived] = useState(false);
-  const overview = initialOverview ?? buildWorkspaceOverview(projects);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/workspaces")
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load workspaces.");
+        if (!active) return;
+        const next = (data.workspaces ?? []) as Workspace[];
+        setWorkspaces(next);
+        const stored = window.localStorage.getItem("nexora.workspaceId");
+        const id = next.find((workspace) => workspace.id === stored)?.id ?? next[0]?.id ?? "";
+        setSelectedWorkspaceId(id);
+        if (id) window.localStorage.setItem("nexora.workspaceId", id);
+      })
+      .catch(() => { if (active) setSelectedWorkspaceId(""); });
+    const onWorkspaceChange = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (id) setSelectedWorkspaceId(id);
+    };
+    window.addEventListener("nexora-workspace-changed", onWorkspaceChange);
+    return () => { active = false; window.removeEventListener("nexora-workspace-changed", onWorkspaceChange); };
+  }, []);
+  const selectedWorkspace = workspaces.find((workspace) => workspace.id === selectedWorkspaceId);
+  const scopedProjects = useMemo(
+    () => selectedWorkspaceId ? projects.filter((project) => project.workspaceId === selectedWorkspaceId || (!project.workspaceId && selectedWorkspace?.personal)) : projects,
+    [projects, selectedWorkspaceId, selectedWorkspace?.personal],
+  );
+  const scopedHistories = useMemo(
+    () => Object.fromEntries(scopedProjects.flatMap((project) => histories?.[project.id] ? [[project.id, histories[project.id]] as const] : [])),
+    [histories, scopedProjects],
+  );
+  const overview = buildWorkspaceOverview(scopedProjects, scopedHistories);
   const visible = useMemo(() => {
-    const filtered = projects.filter(
+    const filtered = scopedProjects.filter(
         (p) =>
           `${p.title} ${p.client}`
             .toLowerCase()
@@ -198,7 +234,7 @@ export function WorkspaceHome({
       : sort === "created"
         ? b.createdAt.localeCompare(a.createdAt)
         : b.updatedAt.localeCompare(a.updatedAt));
-  }, [projects, search, status, showArchived, sort]);
+  }, [scopedProjects, search, status, showArchived, sort]);
   const library = view === "projects";
   return (
     <div className="workspace-main">
@@ -213,6 +249,7 @@ export function WorkspaceHome({
               ? "Browse every brief, scope, and review state saved in your private workspace."
               : "Make the next decision easier to see."}
           </p>
+          {selectedWorkspace && <span className="workspace-context-badge">{selectedWorkspace.name}</span>}
         </div>
         <Link className="button-primary" href="/workspace/new">
           New brief <ArrowUpRight size={13} />
@@ -286,7 +323,7 @@ export function WorkspaceHome({
             <div className="empty-state">
               <div className="section-kicker">No matching projects</div>
               <p>
-                {projects.length
+                {scopedProjects.length
                   ? "Try a different search or status."
                   : "Start with a client brief to shape your first useful scope."}
               </p>

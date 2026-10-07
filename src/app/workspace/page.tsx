@@ -16,6 +16,7 @@ export default async function WorkspacePage() {
     <WorkspaceHome
       overview={buildWorkspaceOverview(projects, histories)}
       projects={projects}
+      histories={histories}
     />
   );
 }

@@ -51,6 +51,19 @@ function throwRpc(error: { code?: string; message?: string } | null): never {
         : 400;
   throw new CloudDomainError(message, status);
 }
+function isPersonalWorkspaceConflict(error: { code?: string; message?: string } | null) {
+  return error?.code === "23505" && /workspaces_one_personal_per_owner|personal workspace/i.test(error.message ?? "");
+}
+export async function withPersonalWorkspaceRetry<T>(
+  operation: () => Promise<{ data: T; error: { code?: string; message?: string } | null }>,
+): Promise<T> {
+  const first = await operation();
+  if (!first.error) return first.data;
+  if (!isPersonalWorkspaceConflict(first.error)) throwRpc(first.error);
+  const retry = await operation();
+  if (retry.error) throwRpc(retry.error);
+  return retry.data;
+}
 async function owner(): Promise<SupabaseClient> {
   await requireServerUser();
   return createSupabaseServerClient();
@@ -73,6 +86,15 @@ export async function cloudListWorkspaces(): Promise<Workspace[]> {
   const { data, error } = await (await owner()).rpc("nexora_list_workspaces");
   if (error) throwRpc(error);
   return (data ?? []) as Workspace[];
+}
+
+/** Ensure the first signed-in request has a personal workspace before UI lists it. */
+export async function cloudEnsurePersonalWorkspace(): Promise<string> {
+  const client = await owner();
+  // A concurrent first request may win the partial unique index while this
+  // transaction is waiting. Re-enter the same guarded RPC after that winner
+  // commits; the function's SELECT FOR UPDATE then returns the row safely.
+  return String(await withPersonalWorkspaceRetry(async () => await client.rpc("nexora_get_or_create_personal_workspace")) ?? "");
 }
 
 export async function cloudCreateWorkspace(name: string): Promise<Workspace> {
@@ -105,10 +127,14 @@ export async function cloudCreateProject(input: {
   tags?: string[];
   deadline?: string | null;
 }): Promise<Project> {
-  const { data, error } = await (
-    await owner()
-  ).rpc("nexora_create_project", { p_project: input });
-  return one<Project>(data, error);
+  const client = await owner();
+  // Project creation calls the database helper that ensures a personal
+  // workspace. If the first signed-in requests race, retry only the known
+  // partial-unique-index conflict after the winner has committed.
+  const data = await withPersonalWorkspaceRetry(
+    async () => await client.rpc("nexora_create_project", { p_project: input }),
+  );
+  return one<Project>(data, null);
 }
 export async function cloudUpdateProject(
   id: string,
@@ -382,6 +408,49 @@ export async function cloudRequestAttachmentDelete(id: string) {
 export async function cloudFinalizeAttachmentDelete(id: string) {
   const { data, error } = await (await owner()).rpc("nexora_finalize_delete_attachment", { p_attachment_id: id });
   return Boolean(one<boolean>(data, error));
+}
+
+export async function cloudListAttachments(projectId: string): Promise<ProjectAttachment[]> {
+  const { data, error } = await (await owner())
+    .from("project_attachments")
+    .select("id,project_id,snapshot_token,object_key,original_name,mime_type,byte_size,created_at,delete_requested_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  if (error) throwRpc(error);
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    id: String(row.id),
+    projectId: String(row.project_id),
+    snapshotToken: row.snapshot_token ? String(row.snapshot_token) : null,
+    objectKey: String(row.object_key),
+    originalName: String(row.original_name),
+    mimeType: String(row.mime_type),
+    byteSize: Number(row.byte_size),
+    createdAt: String(row.created_at),
+    pendingDelete: Boolean(row.delete_requested_at),
+  }));
+}
+
+export async function cloudGetAttachment(projectId: string, attachmentId: string): Promise<ProjectAttachment | null> {
+  const { data, error } = await (await owner())
+    .from("project_attachments")
+    .select("id,project_id,snapshot_token,object_key,original_name,mime_type,byte_size,created_at,delete_requested_at")
+    .eq("project_id", projectId)
+    .eq("id", attachmentId)
+    .maybeSingle();
+  if (error) throwRpc(error);
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  return {
+    id: String(row.id),
+    projectId: String(row.project_id),
+    snapshotToken: row.snapshot_token ? String(row.snapshot_token) : null,
+    objectKey: String(row.object_key),
+    originalName: String(row.original_name),
+    mimeType: String(row.mime_type),
+    byteSize: Number(row.byte_size),
+    createdAt: String(row.created_at),
+    pendingDelete: Boolean(row.delete_requested_at),
+  };
 }
 
 export async function cloudRegisterProfileAvatar(mimeType: string, byteSize: number) {
