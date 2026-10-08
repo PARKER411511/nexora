@@ -28,4 +28,4 @@ Nexora always works with the built-in rule-based analyzer. To enable the optiona
 
 This repository prepares the private Supabase integration and migration. The actual migration, Auth email settings, and redirect URLs must be applied in your Supabase project before the workspace is usable. No billing or paid feature gates are implemented; pricing cards are illustrative portfolio examples and all workspace features are free.
 
-Client review currently requires a signed-in Supabase account and a valid snapshot token. Anonymous token-only review is intentionally disabled until its access policy is explicitly approved and the corresponding narrow RPC is enabled.
+Client review currently requires a signed-in Supabase account and a valid snapshot token. Anonymous token-only review is intentionally disabled until its access policy is explicitly approved and the corresponding narrow RPC is enabled. 23423423434234
