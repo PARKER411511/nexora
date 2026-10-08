@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { safeNextPath } from "@/lib/supabase/auth";
 
@@ -34,6 +34,7 @@ function PasswordField({
   disabled,
   describedBy,
   invalid,
+  labelAction,
 }: {
   id: string;
   label: string;
@@ -45,11 +46,15 @@ function PasswordField({
   disabled: boolean;
   describedBy?: string;
   invalid?: boolean;
+  labelAction?: React.ReactNode;
 }) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <div className="auth-field-label">
+        <label htmlFor={id}>{label}</label>
+        {labelAction}
+      </div>
       <span className="password-control">
         <input
           autoComplete={autoComplete}
@@ -246,9 +251,9 @@ export function AuthForm({
     mode === "signin"
       ? "Sign in to continue to your Nexora workspace."
       : mode === "signup"
-        ? "A private home for project context, scope, and review."
+        ? "Get started with your Nexora workspace."
         : mode === "forgot"
-          ? "Enter your account email and we’ll send a fresh recovery link if it matches a Nexora account."
+          ? "Enter your email to receive a password reset link."
           : "Set a new password for your Nexora account.";
   const passwordHintId = mode === "signup" || mode === "reset" ? "auth-password-hint" : undefined;
   const confirmDescribedBy = [
@@ -261,7 +266,9 @@ export function AuthForm({
   return (
     <div className="auth-card">
       <div className="auth-card-header">
-        <div className="section-kicker">Nexora / workspace access</div>
+        <div className="auth-emblem" aria-hidden="true">
+          <LockKeyhole size={20} strokeWidth={1.7} />
+        </div>
         <h1 id="auth-form-title">{title}</h1>
         <p className="auth-intro">{intro}</p>
         {(mode === "signin" || mode === "signup") && (
@@ -322,19 +329,19 @@ export function AuthForm({
             disabled={busy}
             id="auth-password"
             label="Password"
+            labelAction={mode === "signin" ? (
+              <Link className="auth-recovery-link" href={`/auth/forgot-password?email=${encodeURIComponent(email.trim())}`}>
+                Forgot password?
+              </Link>
+            ) : undefined}
             minLength={mode === "signin" ? undefined : 8}
             onChange={setPassword}
             placeholder={mode === "signin" ? "Enter your password" : "At least 8 characters"}
             value={password}
           />
         )}
-        {mode === "signin" && (
-          <div className="auth-recovery-row">
-            <Link href={`/auth/forgot-password?email=${encodeURIComponent(email.trim())}`}>Forgot your password?</Link>
-          </div>
-        )}
         {(mode === "signup" || mode === "reset") && (
-          <p className="field-hint auth-password-hint" id="auth-password-hint">Use at least 8 characters. A passphrase is easiest to remember.</p>
+          <p className="field-hint auth-password-hint" id="auth-password-hint">Use at least 8 characters.</p>
         )}
         {(mode === "signup" || mode === "reset") && (
           <PasswordField
@@ -367,6 +374,7 @@ export function AuthForm({
         )}
         <button className="button-primary auth-submit" disabled={busy} type="submit">
           {busy ? "Working…" : submitLabel}
+          {!busy && <ArrowRight aria-hidden="true" size={16} strokeWidth={1.8} />}
         </button>
         {mode === "signup" && canResend && (
           <button
@@ -382,7 +390,6 @@ export function AuthForm({
       {mode === "signin" && mfaChallengeId && (
         <form aria-busy={busy} className="auth-form mfa-challenge" onSubmit={verifyMfa}>
           <div className="mfa-intro">
-            <div className="section-kicker">Second step</div>
             <h2>Check your authenticator</h2>
             <p>Enter the 6-digit code from your authenticator app to finish signing in.</p>
           </div>
