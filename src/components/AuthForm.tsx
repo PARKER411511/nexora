@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { safeNextPath } from "@/lib/supabase/auth";
 
@@ -29,6 +30,10 @@ function PasswordField({
   onChange,
   autoComplete,
   minLength,
+  placeholder,
+  disabled,
+  describedBy,
+  invalid,
 }: {
   id: string;
   label: string;
@@ -36,6 +41,10 @@ function PasswordField({
   onChange: (value: string) => void;
   autoComplete: string;
   minLength?: number;
+  placeholder: string;
+  disabled: boolean;
+  describedBy?: string;
+  invalid?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
   return (
@@ -44,20 +53,27 @@ function PasswordField({
       <span className="password-control">
         <input
           autoComplete={autoComplete}
+          aria-describedby={describedBy}
+          aria-invalid={invalid || undefined}
+          disabled={disabled}
           id={id}
           minLength={minLength}
           onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
           required
           type={visible ? "text" : "password"}
           value={value}
         />
         <button
           aria-label={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+          aria-pressed={visible}
           className="password-toggle"
+          disabled={disabled}
           onClick={() => setVisible((current) => !current)}
+          title={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
           type="button"
         >
-          {visible ? "Hide" : "Show"}
+          {visible ? <EyeOff aria-hidden="true" size={17} strokeWidth={1.8} /> : <Eye aria-hidden="true" size={17} strokeWidth={1.8} />}
         </button>
       </span>
     </div>
@@ -88,6 +104,8 @@ export function AuthForm({
   const [mfaChallengeId, setMfaChallengeId] = useState("");
   const [mfaCode, setMfaCode] = useState("");
   const safeNext = safeNextPath(next);
+  const passwordMatches = passwordConfirm.length > 0 && password === passwordConfirm;
+  const passwordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
 
   function resetFeedback() {
     setError("");
@@ -209,12 +227,12 @@ export function AuthForm({
 
   const title =
     mode === "signin"
-      ? "Sign in to your workspace"
+      ? "Welcome back"
       : mode === "signup"
-        ? "Create your private workspace"
+        ? "Create your account"
         : mode === "forgot"
           ? "Reset your password"
-          : "Choose a new password";
+          : "Set a new password";
   const submitLabel =
     mode === "signin"
       ? "Sign in"
@@ -226,69 +244,97 @@ export function AuthForm({
 
   const intro =
     mode === "signin"
-      ? "Pick up where you left off. Your briefs and review decisions are waiting."
+      ? "Sign in to continue to your Nexora workspace."
       : mode === "signup"
-        ? "Create one private home for the context behind your best work."
+        ? "A private home for project context, scope, and review."
         : mode === "forgot"
           ? "Enter your account email and we’ll send a fresh recovery link if it matches a Nexora account."
-          : "Choose a strong password to secure your Nexora workspace."
+          : "Set a new password for your Nexora account.";
+  const passwordHintId = mode === "signup" || mode === "reset" ? "auth-password-hint" : undefined;
+  const confirmDescribedBy = [
+    passwordHintId,
+    passwordConfirm.length > 0 ? "auth-password-match" : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ") || undefined;
 
   return (
     <div className="auth-card">
       <div className="auth-card-header">
-        <div className="section-kicker">Nexora / private workspace</div>
+        <div className="section-kicker">Nexora / workspace access</div>
         <h1>{title}</h1>
         <p className="auth-intro">{intro}</p>
       </div>
-      <form className="auth-form" onSubmit={submit}>
+      <form aria-busy={busy} className="auth-form" onSubmit={submit}>
         {mode === "signup" && (
-          <label className="field" htmlFor="full-name">
-            <span>Your name</span>
+          <div className="field">
+            <label htmlFor="full-name">Your name</label>
             <input
               autoComplete="name"
+              disabled={busy}
               id="full-name"
               maxLength={120}
               onChange={(event) => setFullName(event.target.value)}
+              placeholder="Jane Doe"
               required
               value={fullName}
             />
-          </label>
+          </div>
         )}
         {mode !== "reset" && (
-          <label className="field" htmlFor="auth-email">
-            <span>Email</span>
+          <div className="field">
+            <label htmlFor="auth-email">Email address</label>
             <input
               autoComplete="email"
+              disabled={busy}
               id="auth-email"
               onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@company.com"
               required
               type="email"
               value={email}
             />
-          </label>
+          </div>
         )}
         {mode !== "forgot" && (
           <PasswordField
             autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            describedBy={passwordHintId}
+            disabled={busy}
             id="auth-password"
             label="Password"
             minLength={mode === "signin" ? undefined : 8}
             onChange={setPassword}
+            placeholder={mode === "signin" ? "Enter your password" : "At least 8 characters"}
             value={password}
           />
         )}
-        {mode === "signup" && (
-          <p className="field-hint auth-password-hint">Use at least 8 characters. A passphrase is easiest to remember.</p>
+        {mode === "signin" && (
+          <div className="auth-recovery-row">
+            <Link href={`/auth/forgot-password?email=${encodeURIComponent(email.trim())}`}>Forgot your password?</Link>
+          </div>
+        )}
+        {(mode === "signup" || mode === "reset") && (
+          <p className="field-hint auth-password-hint" id="auth-password-hint">Use at least 8 characters. A passphrase is easiest to remember.</p>
         )}
         {(mode === "signup" || mode === "reset") && (
           <PasswordField
             autoComplete="new-password"
+            disabled={busy}
             id="auth-password-confirm"
             label="Confirm password"
             minLength={8}
             onChange={setPasswordConfirm}
+            placeholder="Repeat your password"
             value={passwordConfirm}
+            describedBy={confirmDescribedBy}
+            invalid={passwordMismatch}
           />
+        )}
+        {(mode === "signup" || mode === "reset") && passwordConfirm.length > 0 && (
+          <p className={`auth-password-match ${passwordMatches ? "is-match" : "is-mismatch"}`} id="auth-password-match" aria-live="polite">
+            {passwordMatches ? "Passwords match." : "Passwords do not match yet."}
+          </p>
         )}
         {error && (
           <p className="form-error auth-feedback" role="alert">
@@ -315,19 +361,21 @@ export function AuthForm({
         )}
       </form>
       {mode === "signin" && mfaChallengeId && (
-        <form className="auth-form mfa-challenge" onSubmit={verifyMfa}>
-          <div className="field"><label htmlFor="mfa-code">Authenticator code</label><input autoComplete="one-time-code" id="mfa-code" inputMode="numeric" maxLength={6} onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, ""))} pattern="[0-9]{6}" required value={mfaCode} /></div>
+        <form aria-busy={busy} className="auth-form mfa-challenge" onSubmit={verifyMfa}>
+          <div className="mfa-intro">
+            <div className="section-kicker">Second step</div>
+            <h2>Check your authenticator</h2>
+            <p>Enter the 6-digit code from your authenticator app to finish signing in.</p>
+          </div>
+          <div className="field"><label htmlFor="mfa-code">Authenticator code</label><input autoComplete="one-time-code" disabled={busy} id="mfa-code" inputMode="numeric" maxLength={6} onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, ""))} pattern="[0-9]{6}" placeholder="123456" required value={mfaCode} /></div>
           <button className="button-primary auth-submit" disabled={busy} type="submit">{busy ? "Verifying…" : "Verify and continue"}</button>
         </form>
       )}
       <div className="auth-links">
         {mode === "signin" && (
-          <>
-            <Link href={`/auth/sign-up?next=${encodeURIComponent(safeNext)}`}>
-              Create an account
-            </Link>
-            <Link href="/auth/forgot-password">Forgot password?</Link>
-          </>
+          <Link href={`/auth/sign-up?next=${encodeURIComponent(safeNext)}`}>
+            New to Nexora? Create an account
+          </Link>
         )}
         {mode === "signup" && (
           <Link href={`/auth/sign-in?next=${encodeURIComponent(safeNext)}`}>
