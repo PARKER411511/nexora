@@ -262,10 +262,29 @@ export function AuthForm({
     <div className="auth-card">
       <div className="auth-card-header">
         <div className="section-kicker">Nexora / workspace access</div>
-        <h1>{title}</h1>
+        <h1 id="auth-form-title">{title}</h1>
         <p className="auth-intro">{intro}</p>
+        {(mode === "signin" || mode === "signup") && (
+          <p className="auth-switch">
+            {mode === "signin" ? (
+              <>
+                New to Nexora?{" "}
+                <Link href={`/auth/sign-up?next=${encodeURIComponent(safeNext)}`}>
+                  Create an account
+                </Link>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <Link href={`/auth/sign-in?next=${encodeURIComponent(safeNext)}`}>
+                  Sign in
+                </Link>
+              </>
+            )}
+          </p>
+        )}
       </div>
-      <form aria-busy={busy} className="auth-form" onSubmit={submit}>
+      <form aria-busy={busy} aria-labelledby="auth-form-title" className="auth-form" onSubmit={submit}>
         {mode === "signup" && (
           <div className="field">
             <label htmlFor="full-name">Your name</label>
@@ -371,20 +390,12 @@ export function AuthForm({
           <button className="button-primary auth-submit" disabled={busy} type="submit">{busy ? "Verifying…" : "Verify and continue"}</button>
         </form>
       )}
-      <div className="auth-links">
-        {mode === "signin" && (
-          <Link href={`/auth/sign-up?next=${encodeURIComponent(safeNext)}`}>
-            New to Nexora? Create an account
-          </Link>
-        )}
-        {mode === "signup" && (
-          <Link href={`/auth/sign-in?next=${encodeURIComponent(safeNext)}`}>
-            Already have an account? Sign in
-          </Link>
-        )}
-        {mode === "forgot" && <Link href="/auth/sign-in">Back to sign in</Link>}
-        {mode === "reset" && <Link href="/workspace">Continue to workspace</Link>}
-      </div>
+      {(mode === "forgot" || mode === "reset") && (
+        <div className="auth-links">
+          {mode === "forgot" && <Link href="/auth/sign-in">Back to sign in</Link>}
+          {mode === "reset" && <Link href="/workspace">Continue to workspace</Link>}
+        </div>
+      )}
     </div>
   );
 }
